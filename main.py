@@ -1,4 +1,4 @@
-import time, sys, getpass, signal 
+import time, sys, getpass, signal, struct
 from lib.honcore.client import HoNClient
 from lib.honcore.exceptions import *
 from lib.honcore.constants import *
@@ -13,13 +13,15 @@ class BasicHoNClient(HoNClient):
     def setup_events(self):
         self.connect_event(HON_SC_PACKET_RECV, self.__on_packet)
         self.connect_event(HON_SC_AUTH_ACCEPTED, self.on_authenticated)
+        self.connect_event(HON_SC_WHISPER, self.on_whisper)
         self.connect_event(HON_SC_JOINED_CHANNEL, self.on_joined_channel)
+        self.connect_event(HON_SC_GAME_INVITE, self.on_game_invite)
 
     def __on_packet(self, packet_id, packet):
         print "<< 0x%x | %i bytes" % (packet_id, len(packet))
         """ Pipe the raw packet to a file for debugging. """
         f = open("raw-packets/0x%x" % packet_id, "w")
-        print >>f, packet
+        print >>f, "%s (%s)"%(struct.unpack('<H%ss'%(len(packet[2:])-2), packet[2:]), struct.unpack('>H', packet[:2]))
         f.flush()
         f.close()
 
@@ -29,7 +31,16 @@ class BasicHoNClient(HoNClient):
         for buddy in self.get_buddies():
             if buddy.status != HON_STATUS_OFFLINE:
                 print "%s is online" % buddy
+        time.sleep(2)
+        self.server_list_get()
         time.sleep(1)
+
+    def on_whisper(self, player, message):
+        print "Whisper from %s : %s"%(player, message)
+        if 'invite' in message:
+            self.send_game_invite(player)
+        if 'create game ' in message:
+            self.create_game(message.split('create game ')[1])
 
     def on_joined_channel(self, channel, channel_id, topic, operators, users):
         print "Joined %s" % channel
@@ -59,6 +70,10 @@ class BasicHoNClient(HoNClient):
 
         print users_str
         print "%s Users [%s ops, %s normal]" % (len(nicknames), op_count, normal_count)
+
+    def on_game_invite(self, player, server_ip):
+        print "Game invite from %s : %s"%(player, server_ip)
+        self.send_whisper(player, "Merci pour l'invite connard")
 
     @property
     def is_logged_in(self):
@@ -112,7 +127,7 @@ class BasicHoNClient(HoNClient):
 
 def main():
     client = BasicHoNClient()
-    client.configure(protocol=19, invis=False)
+    client.configure(protocol=22, invis=False)
 
     def sigint_handler(signal, frame):
         print "SIGINT, quitting..."
