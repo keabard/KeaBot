@@ -4,6 +4,7 @@ from lib.honcore.exceptions import *
 from lib.honcore.constants import *
 from hashlib import md5
 
+
 class BasicHoNClient(HoNClient):
     def __init__(self):
         super(BasicHoNClient, self).__init__()
@@ -32,7 +33,7 @@ class BasicHoNClient(HoNClient):
             if buddy.status != HON_STATUS_OFFLINE:
                 print "%s is online" % buddy
         time.sleep(2)
-        self.server_list_get()
+        self.create_game('Test')
         time.sleep(1)
 
     def on_whisper(self, player, message):

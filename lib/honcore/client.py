@@ -7,6 +7,7 @@ import sys, struct, socket, time
 import deserialise, common
 from requester import Requester
 from networking import ChatSocket, GameSocket
+from utils import ping_server
 from constants import *
 from exceptions import *
 
@@ -25,7 +26,7 @@ class HoNClient(object):
         self.__create_events()
         self.__setup_events()
         self.__chat_socket = ChatSocket(self.__events)
-        self.__game_socket = GameSocket()
+        self.__game_socket = GameSocket({})
         self.__listener = None
         self.__requester = Requester()
         self.account = None
@@ -302,10 +303,11 @@ class HoNClient(object):
         
     """ Server list related functions"""
     def server_list_get(self):
-        """ Requests the server list from the server and then pushes them through server_list_parse.
+        """ Requests the server list from the server and then pushes them through __server_list_parse.
             Returns a dict of server ips.
         """
-        raw = self.__requester.server_list()
+        print 'Getting servers list...'
+        raw = self.__requester.server_list(self.account.cookie, GAME_SERVER_TYPE)
         try:
             raw = deserialise.parse_raw(raw)
         except ValueError:
@@ -314,29 +316,34 @@ class HoNClient(object):
 
     def __server_list_parse(self, raw):
         """ Parses the server_list into a dictionary of the format:
-            motd = {
-                motd_list = [
-                    {
-                        ["title"] = "Item 1 title",
-                        ["author"] = "MsPudding",
-                        ["date"] = "6/30/2011"
-                        ["body"] = "This is the body of the message including line feeds"
+            servers_dict = {
+                server_list : {
+                    server_id : {
+                        ["ip"] = Game Server 1 IP Address,
+                        ["server_id"] = Game Server 1 ID,
+                        ["session"] = Game Server 1 Session Key,
+                        ["port"] = Game Server 1 Connection Port,
+                        ["location"] = Game Server 1 Location
                     },
-                    {
-                        ["title"] = "Item 2 title", 
-                        ["author"] = "Konrar",
-                        ["date"] = "6/29/2011",
-                        ["body"] = "This is the body text Sometimes there are ^rColours^*"
-                    }
-                ],
-                image = "http://icb.s2games.com/motd/4e67cffcc959e.jpg",
-                server_data = "We are aware of the server issues....",
-                honcast = 0
+                    server_id : {
+                        ["ip"] = Game Server 2 IP Address,
+                        ["server_id"] = Game Server 2 ID,
+                        ["session"] = Game Server 2 Session Key,
+                        ["port"] = Game Server 2 Connection Port,
+                        ["location"] = Game Server 2 Location
+                    },
+                    ....
+                },
+                acc_key = User Account Key,
+                acc_key_hash = User Account Key Hash
             }
         """
-        server_list = []
-        print 'SERVER LIST : %s'%raw
-        return server_list
+        servers_dict = {}
+        servers_dict['server_list'] = raw['server_list']
+        servers_dict['acc_key'] = raw['acc_key']
+        servers_dict['acc_key_hash'] = raw['acc_key_hash']
+        
+        return servers_dict
 
     """ The core client functions."""
     def send_channel_message(self, message, channel_id):
@@ -384,13 +391,28 @@ class HoNClient(object):
         self.__chat_socket.send_game_invite(player)
 
     def create_game(self, game_name):
-        """ Choose a good server and create the game.
+        """ Create the game with the given name.
             Takes 1 parameter.
                 'game_name' A string containing the game name.
         """
-                
-
-
+        server_infos = self.pick_game_server(MAXIMUM_SERVER_PING)
+        print "CHOSEN SERVER : %s"%server_infos
+        
+    def pick_game_server(self, maximum_ping=150):
+        """ Request masterserver for server list, and return the first game server infos with a ping under
+            the maximum ping given, along with acc_key and acc_key_hash
+        """
+        servers_dict = self.server_list_get()
+        
+        for gameserver_id, gameserver_info in servers_dict['server_list'].items():
+            if 'ip' in gameserver_info:
+                server_ping = ping_server(gameserver_info['ip'])
+                if 0 < server_ping < maximum_ping:
+                    return {'server_info' : gameserver_info, 
+                            'acc_key' : servers_dict['acc_key'], 
+                            'acc_key_hash' : servers_dict['acc_key_hash']
+                            }
+        return -1
 
     """ Utility functions """
     def connect_event(self, event_id, method, priority=5):

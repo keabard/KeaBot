@@ -114,3 +114,7 @@ HON_STATUS_INGAME       = 5
 HON_MODE_NORMAL         = 0x00
 HON_MODE_INVISIBLE      = 0x03
 
+""" Game Server"""
+GAME_SERVER_TYPE        = 90
+MAXIMUM_SERVER_PING     = 90
+
