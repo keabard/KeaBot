@@ -1,6 +1,8 @@
-#basic-hon-client
+#KeaBot
 
-A simple hon client I used for testing which demonstrates the usage of [HoNCore](http://github.com/Joev-/HoNCore)
+A HoN Client designed to do everything [HoNCore](http://github.com/Joev-/HoNCore) does, with game server protocol added.
+
+Forked from Joev-'s [basic-hon-client](https://github.com/Joev-/basic-hon-client)
 
 It runs on the command line and requires that HoNCore be available in the lib module (Create a lib folder with an `__init__.py` file and symlink/copy honcore to there)
 
