@@ -49,6 +49,8 @@ HON_SC_CHANNEL_PASSWORD_CHANGED = 0x43
 HON_SC_CHANNEL_AUTH_ADD_FAIL    = 0x44
 HON_SC_CHANNEL_AUTH_DEL_FAIL    = 0x45
 HON_SC_JOIN_CHANNEL_PASSWORD    = 0x46
+HON_SC_CLAN_MEMBER_ADDED        = 0x4E
+HON_SC_NAME_CHANGE              = 0x5A
 HON_SC_CHANNEL_EMOTE            = 0x65
 HON_SC_TOTAL_ONLINE             = 0x68
 HON_SC_REQUEST_NOTIFICATION     = 0xB2
@@ -56,7 +58,7 @@ HON_SC_NOTIFICATION             = 0xB4
 
 "Reverse-engineered"
 
-HON_SC_GAME_INVITE      = 0x25
+HON_SC_GAME_INVITE              = 0x25
 
 """ Client -> Server """
 HON_CS_PONG                     = 0x2A01
@@ -88,6 +90,8 @@ HON_CS_JOIN_CHANNEL_PASSWORD    = 0x46
 HON_CS_CLAN_ADD_MEMBER          = 0x47
 HON_CS_CHANNEL_EMOTE            = 0x65
 HON_CS_BUDDY_ACCEPT             = 0xB3
+HON_CS_START_MM_GROUP           = 0x0C0A
+HON_CS_INVITE_TO_MM             = 0x0C0D
 
 "Reverse-engineered"
 

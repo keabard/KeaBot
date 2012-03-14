@@ -386,16 +386,15 @@ class ChatSocket:
     def send_channel_emote(self):
         pass
 
-    def send_buddy_accept(self,  player, pass_int):
+    def send_buddy_accept(self,  player):
         """ Sends a positive buddy request response.
             Packet ID: 0xB3
         """
         c = Struct("buddy_accept", 
                    ULInt16("id"),
-                    ULInt16("pass_int"), 
                    String("player",  len(player)+1,  encoding="utf8",  padchar="\x00")
                    )
-        packet = c.build(Container(id=HON_CS_BUDDY_ACCEPT, pass_int = pass_int, player=unicode(player)))
+        packet = c.build(Container(id=HON_CS_BUDDY_ACCEPT, player=unicode(player)))
         self.send(packet)
 
     def send_game_invite(self, player):

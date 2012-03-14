@@ -23,7 +23,7 @@ class BasicHoNClient(HoNClient):
         print "<< 0x%x | %i bytes" % (packet_id, len(packet))
         """ Pipe the raw packet to a file for debugging. """
         f = open("raw-packets/0x%x" % packet_id, "a+")
-        print "%s (%s)"%(struct.unpack('<H%ss'%(len(packet[2:])-2), packet[2:]), struct.unpack('>H', packet[:2]))
+        #print "%s (%s)"%(struct.unpack('<H%ss'%(len(packet[2:])-2), packet[2:]), struct.unpack('>H', packet[:2]))
         print >>f, "%s (%s)"%(struct.unpack('<H%ss'%(len(packet[2:])-2), packet[2:]), struct.unpack('>H', packet[:2]))
         #f.flush()
         f.close()
@@ -82,7 +82,7 @@ class BasicHoNClient(HoNClient):
         
     def on_buddy_invite(self, player, pass_int):
         print 'BUDDY INVITE RECEIVED : %s %s'%(player, pass_int)
-        self.send_buddy_accept(player, pass_int)
+        self.send_buddy_accept(player)
 
     @property
     def is_logged_in(self):

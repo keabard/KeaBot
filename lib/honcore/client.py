@@ -391,12 +391,12 @@ class HoNClient(object):
         """
         self.__chat_socket.send_buddy_add_notify(player)
         
-    def send_buddy_accept(self, player, pass_int):
+    def send_buddy_accept(self, player):
         """ Sends a  buddy accept.
             Takes 1 parameter.
                 `player`    A string containing the player's name.
         """
-        self.__chat_socket.send_buddy_accept(player,  pass_int)
+        self.__chat_socket.send_buddy_accept(player)
         
     def send_game_invite(self, player):
         """ Sends a game invite to the player.
