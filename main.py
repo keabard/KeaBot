@@ -17,13 +17,15 @@ class BasicHoNClient(HoNClient):
         self.connect_event(HON_SC_WHISPER, self.on_whisper)
         self.connect_event(HON_SC_JOINED_CHANNEL, self.on_joined_channel)
         self.connect_event(HON_SC_GAME_INVITE, self.on_game_invite)
+        self.connect_event(HON_SC_REQUEST_NOTIFICATION, self.on_buddy_invite)
 
     def __on_packet(self, packet_id, packet):
         print "<< 0x%x | %i bytes" % (packet_id, len(packet))
         """ Pipe the raw packet to a file for debugging. """
-        f = open("raw-packets/0x%x" % packet_id, "w")
+        f = open("raw-packets/0x%x" % packet_id, "a+")
+        print "%s (%s)"%(struct.unpack('<H%ss'%(len(packet[2:])-2), packet[2:]), struct.unpack('>H', packet[:2]))
         print >>f, "%s (%s)"%(struct.unpack('<H%ss'%(len(packet[2:])-2), packet[2:]), struct.unpack('>H', packet[:2]))
-        f.flush()
+        #f.flush()
         f.close()
 
     def on_authenticated(self):
@@ -40,9 +42,11 @@ class BasicHoNClient(HoNClient):
         print "Whisper from %s : %s"%(player, message)
         if 'invite' in message:
             self.send_game_invite(player)
-        if 'create game ' in message:
+        elif 'create game ' in message:
             self.create_game(message.split('create game ')[1])
-
+        elif 'buddy' in message:
+            self.send_buddy_add_notify(player)
+        
     def on_joined_channel(self, channel, channel_id, topic, operators, users):
         print "Joined %s" % channel
         op_count = 0
@@ -75,6 +79,10 @@ class BasicHoNClient(HoNClient):
     def on_game_invite(self, player, server_ip):
         print "Game invite from %s : %s"%(player, server_ip)
         self.send_whisper(player, "Merci pour l'invite connard")
+        
+    def on_buddy_invite(self, player, pass_int):
+        print 'BUDDY INVITE RECEIVED : %s %s'%(player, pass_int)
+        self.send_buddy_accept(player, pass_int)
 
     @property
     def is_logged_in(self):

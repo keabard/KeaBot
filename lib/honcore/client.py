@@ -50,6 +50,7 @@ class HoNClient(object):
         self.__events[HON_SC_TOTAL_ONLINE] = Event("Total Online", HON_SC_TOTAL_ONLINE)
         self.__events[HON_SC_GAME_INVITE] = Event("Game Invite", HON_SC_GAME_INVITE)
         self.__events[HON_SC_PACKET_RECV] = Event("Packet Received", HON_SC_PACKET_RECV)
+        self.__events[HON_SC_REQUEST_NOTIFICATION] = Event("Buddy invite received", HON_SC_REQUEST_NOTIFICATION)
 
     def __setup_events(self):
         """ Transparent handling of some data is needed so that the client
@@ -382,7 +383,21 @@ class HoNClient(object):
                 `message`   A string containing the message.
         """
         self.__chat_socket.send_private_message(player, message)
-
+        
+    def send_buddy_add_notify(self, player):
+        """ Send a buddy add notify to the player.
+            Takes 1 parameter.
+                `player`    A string containing the player's name.
+        """
+        self.__chat_socket.send_buddy_add_notify(player)
+        
+    def send_buddy_accept(self, player, pass_int):
+        """ Sends a  buddy accept.
+            Takes 1 parameter.
+                `player`    A string containing the player's name.
+        """
+        self.__chat_socket.send_buddy_accept(player,  pass_int)
+        
     def send_game_invite(self, player):
         """ Sends a game invite to the player.
             Takes 1 parameter.

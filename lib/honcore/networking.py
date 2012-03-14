@@ -272,8 +272,27 @@ class ChatSocket:
             if e.errno == 32:
                 raise ChatServerError(206)
 
-    def send_buddy_add_notify(self):
-        pass
+    def send_buddy_add_notify(self, player):
+        """ Send a buddy inviter to the player
+            Packet ID : 0x0D
+        """
+        print 'From player %s'%player
+        #TODO: Dark magic
+        c = Struct("buddy_invite", 
+                   ULInt16("id"), 
+                   Byte("unknown_byte"), 
+                   ULInt16("pass_int"), 
+                   Byte("status"), 
+                   Byte("flags"), 
+                   String("player",  len(player)+1, encoding="utf8", padchar="\x00"))
+        packet = c.build(Container(id=HON_CS_BUDDY_ADD_NOTIFY, 
+                                                  unknown_byte=2, 
+                                                  pass_int=24940, 
+                                                  status=253, 
+                                                  flags=4, 
+                                                  player=unicode(player)))
+        print 'Sending buddy add notify packet : %s'%packet
+        self.send(packet)
 
     def send_join_game(self):
         pass
@@ -340,7 +359,7 @@ class ChatSocket:
     def send_channel_promote(self):
         pass
 
-    def send_channeL_demote(self):
+    def send_channel_demote(self):
         pass
 
     def send_channel_auth_enable(self):
@@ -367,8 +386,17 @@ class ChatSocket:
     def send_channel_emote(self):
         pass
 
-    def send_buddy_accept(self):
-        pass
+    def send_buddy_accept(self,  player, pass_int):
+        """ Sends a positive buddy request response.
+            Packet ID: 0xB3
+        """
+        c = Struct("buddy_accept", 
+                   ULInt16("id"),
+                    ULInt16("pass_int"), 
+                   String("player",  len(player)+1,  encoding="utf8",  padchar="\x00")
+                   )
+        packet = c.build(Container(id=HON_CS_BUDDY_ACCEPT, pass_int = pass_int, player=unicode(player)))
+        self.send(packet)
 
     def send_game_invite(self, player):
         """ Sends a request to join the current game.
@@ -734,7 +762,19 @@ class PacketParser:
         return {'count': r.count, 'region_data': r.regions} 
     
     def parse_request_notification(self, packet):
-        pass
+        """ Gets a buddy invite from another player
+        Packet ID : 0xB2
+        """
+        c = Struct("buddy_invite", 
+                Byte("unknown_byte"), 
+                ULInt16("pass_int"), 
+                Byte('status'),
+                Byte('flags'),
+                CString('player')
+            )
+        r = c.parse(packet)
+        print 'PASS INT : %s'%r.pass_int
+        return {'player' : r.player, 'pass_int' : r.pass_int}
 
     def parse_notification(self, packet):
         pass
