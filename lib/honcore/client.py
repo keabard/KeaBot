@@ -426,16 +426,21 @@ class HoNClient(object):
         """ Request masterserver for server list, and return the first game server infos with a ping under
             the maximum ping given, along with acc_key and acc_key_hash
         """
+        pinged_servers = []
         servers_dict = self.server_list_get()
         
         for gameserver_id, gameserver_info in servers_dict['server_list'].items():
-            if 'ip' in gameserver_info:
-                server_ping = ping_server(gameserver_info['ip'])
-                if 0 < server_ping < maximum_ping:
-                    return {'server_info' : gameserver_info, 
-                            'acc_key' : servers_dict['acc_key'], 
-                            'acc_key_hash' : servers_dict['acc_key_hash']
-                            }
+            if 'ip' in gameserver_info and gameserver_info['ip'] not in pinged_servers:
+                pinged_servers.append(gameserver_info['ip'])
+                try:
+                    server_ping = ping_server(gameserver_info['ip'])
+                    if 0 < server_ping < maximum_ping:
+                        return {'server_info' : gameserver_info, 
+                                'acc_key' : servers_dict['acc_key'], 
+                                'acc_key_hash' : servers_dict['acc_key_hash']
+                                }
+                except:
+                    continue
         return -1
 
     """ Utility functions """
