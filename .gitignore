@@ -1,4 +1,4 @@
 *.pyc
 KeaBot.e4p
-main.py~
+*.py~
 raw-packets
