@@ -273,25 +273,14 @@ class ChatSocket:
                 raise ChatServerError(206)
 
     def send_buddy_add_notify(self, player):
-        """ Send a buddy inviter to the player
+        """ Send a buddy invite to the player
             Packet ID : 0x0D
         """
-        print 'From player %s'%player
-        #TODO: Dark magic
         c = Struct("buddy_invite", 
                    ULInt16("id"), 
-                   Byte("unknown_byte"), 
-                   ULInt16("pass_int"), 
-                   Byte("status"), 
-                   Byte("flags"), 
                    String("player",  len(player)+1, encoding="utf8", padchar="\x00"))
-        packet = c.build(Container(id=HON_CS_BUDDY_ADD_NOTIFY, 
-                                                  unknown_byte=2, 
-                                                  pass_int=24940, 
-                                                  status=253, 
-                                                  flags=4, 
-                                                  player=unicode(player)))
-        print 'Sending buddy add notify packet : %s'%packet
+        packet = c.build(Container(id=HON_CS_BUDDY_ADD_NOTIFY, player=unicode(player)))
+        print 'Sending buddy add notify to player : %s'%player
         self.send(packet)
 
     def send_join_game(self):
@@ -406,6 +395,18 @@ class ChatSocket:
                 String("player", len(player)+1, encoding="utf8", padchar="\x00")
             )
         packet = c.build(Container(id=HON_CS_GAME_INVITE, player=unicode(player)))
+        self.send(packet)
+        
+    def send_game_server_ip(self, server_ip):
+        """ Sends a chosen game server ip to the chat server.
+            Packet ID: 0xf00
+        """
+        c = Struct("game_server_ip",
+                ULInt16("id"),
+                String("server_ip", len(server_ip)+1, encoding="utf8", padchar="\x00")
+            )
+        packet = c.build(Container(id=HON_CS_GAME_SERVER_IP, server_ip=unicode(server_ip)))
+        print "Sending game_server_ip packet to IP %s (%s) : %s (%s)"%(server_ip, len(server_ip), packet, len(packet))
         self.send(packet)
     
 class PacketParser:

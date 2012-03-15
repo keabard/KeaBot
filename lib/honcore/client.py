@@ -405,6 +405,13 @@ class HoNClient(object):
         """
         self.__chat_socket.send_game_invite(player)
 
+    def send_game_server_ip(self, server_ip):
+        """ Sends a chosen game server ip to the chat server.
+            Takes 1 parameter.
+                `server_ip`    A string containing the chosen server IP
+        """
+        self.__chat_socket.send_game_server_ip(server_ip)
+
     def create_game(self, game_name):
         """ Create the game with the given name.
             Takes 1 parameter.
@@ -412,6 +419,8 @@ class HoNClient(object):
         """
         server_infos = self.pick_game_server(MAXIMUM_SERVER_PING)
         print "CHOSEN SERVER : %s"%server_infos
+        self.send_game_server_ip('%s:%s'%(server_infos['server_info']['ip'],
+                                          server_infos['server_info']['port']))
         
     def pick_game_server(self, maximum_ping=150):
         """ Request masterserver for server list, and return the first game server infos with a ping under

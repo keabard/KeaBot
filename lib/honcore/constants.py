@@ -95,7 +95,9 @@ HON_CS_INVITE_TO_MM             = 0x0C0D
 
 "Reverse-engineered"
 
-HON_CS_GAME_INVITE      = 0x24
+HON_CS_GAME_INVITE              = 0x24
+HON_CS_GAME_SERVER_IP           = 0xf00
+HON_CS_GAME_SERVER_INFO         = 0x1000
 
 # Dummy Events / Custom events?
 HON_SC_PACKET_RECV              = "HON_SC_PACKET_RECV"

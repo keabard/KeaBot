@@ -3,12 +3,13 @@ HoNCore. Python library providing connectivity and functionality
 with HoN's chat server.
 """
 
-import tempfile, subprocess, re
+import tempfile, subprocess, re, time
 
 def ping_server(server_ip):
     print 'Pinging server with IP : %s'%server_ip
     tmp_file = tempfile.TemporaryFile()    
     subprocess.call(['ping', '-c', '1', server_ip], stdout = tmp_file)
+    time.sleep(1)
     tmp_file.seek(0)
     ping_lines = tmp_file.read()
     tmp_file.close()

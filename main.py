@@ -35,7 +35,7 @@ class BasicHoNClient(HoNClient):
             if buddy.status != HON_STATUS_OFFLINE:
                 print "%s is online" % buddy
         time.sleep(2)
-        self.create_game('Test')
+        self.create_game("Test")
         time.sleep(1)
 
     def on_whisper(self, player, message):
@@ -48,7 +48,7 @@ class BasicHoNClient(HoNClient):
             self.send_buddy_add_notify(player)
         
     def on_joined_channel(self, channel, channel_id, topic, operators, users):
-        print "Joined %s" % channel
+        print "Joined channel %s" % channel
         op_count = 0
         normal_count = 0
         nicknames = []
