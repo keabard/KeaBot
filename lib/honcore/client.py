@@ -248,7 +248,12 @@ class HoNClient(object):
             
         # Send initial authentication request to the game server.
         try:
-            self.__game_socket.send_auth_info(self.account.account_id, self.account.cookie, self.account.ip, self.account.auth_hash,  self.config['protocol'], self.config['invis'])
+            self.__game_socket.send_auth_info(self.account.account_id,
+                                              self.account.cookie, 
+                                              self.account.ip, 
+                                              self.account.auth_hash,  
+                                              self.config['protocol'], 
+                                              self.config['invis'])
         except ChatServerError:
             raise # Re-raise the exception.
         
