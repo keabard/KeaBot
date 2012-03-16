@@ -56,6 +56,9 @@ class Account:
         self.nickname = nickname
         self.cookie = cookie
         self.auth_hash = auth_hash
+        self.game_session_key = None
+        self.game_ip = None
+        self.game_port = None
         self.chat_url = chat_url
         self.ip = ip
         self.buddy_list = {}
@@ -63,6 +66,7 @@ class Account:
         self.ban_list = {}
         self.ignore_list = {}
         self.logged_in = False
+        self.in_game = False
 
     def __repr__(self):
         return "<User Account: #%s %s>" % (self.account_id, self.nickname)

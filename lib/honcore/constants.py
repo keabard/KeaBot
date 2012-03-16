@@ -60,6 +60,10 @@ HON_SC_NOTIFICATION             = 0xB4
 
 HON_SC_GAME_INVITE              = 0x25
 
+""" GameServer -> Client """
+
+HON_GSC_PACKET_RECV             = "HON_GSC_PACKET_RECV"
+
 """ Client -> Server """
 HON_CS_PONG                     = 0x2A01
 HON_CS_CHANNEL_MSG              = 0x03
@@ -98,6 +102,10 @@ HON_CS_INVITE_TO_MM             = 0x0C0D
 HON_CS_GAME_INVITE              = 0x24
 HON_CS_GAME_SERVER_IP           = 0xf00
 HON_CS_GAME_SERVER_INFO         = 0x1000
+
+""" Client -> GameServer """
+
+HON_CGS_PONG                    = 0
 
 # Dummy Events / Custom events?
 HON_SC_PACKET_RECV              = "HON_SC_PACKET_RECV"

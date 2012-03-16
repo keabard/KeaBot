@@ -221,6 +221,58 @@ class HoNClient(object):
                 self.__chat_socket.socket.close()
             except socket.error:
                 raise ChatServerError(209)
+                
+    """ Gameserver related functions"""
+    def _game_connect(self):
+        """ Sends the initial authentication request to a gameserver via the game socket object.
+
+            Ensures the user information required for authentication is available, otherwise raises
+            a GameServerError #205 (No session key/auth hash provided)
+
+            If for some reason a GameSocket does not exist then one is created.
+            Connects that game socket to the correct address and port. Any exceptions are raised to the top method.
+            Finally sends a valid authentication packet. Any exceptions are raised to the top method.
+        """
+        if self.account == None or self.account.cookie == None or self.account.game_session_key == None or self.account.auth_hash == None:
+            raise GameServerError(205)
+       
+        if self.__game_socket is None:
+            self.__game_socket = GameSocket()
+        try:
+            self.__game_socket.connect(self.account.game_ip, self.account.game_port) # Basic connection to the socket
+        except HoNCoreError as e:
+            if e.code == 10: # Socket error.
+                raise GameServerError(208) # Could not connect to the game server.
+            elif e.code == 11: # Socket timed out.
+                raise GameServerError(201)
+            
+        # Send initial authentication request to the game server.
+        try:
+            self.__game_socket.send_auth_info(self.account.account_id, self.account.cookie, self.account.ip, self.account.auth_hash,  self.config['protocol'], self.config['invis'])
+        except ChatServerError:
+            raise # Re-raise the exception.
+        
+        # The idea is to give 10 seconds for the chat server to respond to the authentication request.
+        # If it is accepted, then the `is_authenticated` flag will be set to true.
+        # NOTE: Lag will make this sort of iffy....
+        attempts = 1
+        while attempts is not 10:
+            if self.__chat_socket.is_authenticated:
+                return True
+            else:
+                time.sleep(1)
+                attempts += 1
+        raise ChatServerError(200) # Server did not respond to the authentication request 
+        
+    def _chat_disconnect(self):
+        """ Disconnect gracefully from the chat server and close & remove the socket."""
+        if self.__chat_socket is not None:
+            self.__chat_socket.connected = False # Safer to stop the thread with this first.
+            try:
+                self.__chat_socket.socket.shutdown(socket.SHUT_RDWR)
+                self.__chat_socket.socket.close()
+            except socket.error:
+                raise ChatServerError(209)
 
     @property
     def is_logged_in(self):

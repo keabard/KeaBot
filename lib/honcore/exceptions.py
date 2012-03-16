@@ -39,7 +39,14 @@ class MasterServerError(HoNException):
     pass
 
 class ChatServerError(HoNException):
-    """ Ecxceptions related to the chat server.
+    """ Exceptions related to the chat server.
+        Can be raised if invalid data is received or if the socket times out and the
+        connection to the server is lost.
+    """
+    pass
+
+class GameServerError(HoNException):
+    """ Exceptions related to a game server.
         Can be raised if invalid data is received or if the socket times out and the
         connection to the server is lost.
     """

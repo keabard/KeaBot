@@ -16,25 +16,25 @@ class SocketListener(threading.Thread):
         Receives the packet and in an addition thread parses the packet
         and triggers any event handlers.
     """
-    def __init__(self, chat_socket):
+    def __init__(self, socket):
         threading.Thread.__init__(self, name='SocketListener')
-        self.chat_socket = chat_socket
+        self.socket = socket
         self.stopped = False
 
     def __repr__(self):
-        return "<SocketListener on socket %s>" % self.chat_socket.socket
+        return "<SocketListener on socket %s>" % self.socket.socket
 
     def run(self):
         while not self.stopped:
             try:
-                packet = self.chat_socket.recv()
+                packet = self.socket.recv()
                 if not packet:
                     #print "Empty packet received, socket terminated."
                     self.stopped = True
                     break
-                #print "Packet 0x%x on socket %s" % (struct.unpack('H', packet[2:4])[0], self.chat_socket.socket)
-                threading.Thread(target=self.chat_socket.parse_packet, name='PacketParser', args=(packet,)).start()
-                #self.chat_socket.parse_packet(packet)
+                #print "Packet 0x%x on socket %s" % (struct.unpack('H', packet[2:4])[0], self.socket.socket)
+                threading.Thread(target=self.socket.parse_packet, name='PacketParser', args=(packet,)).start()
+                #self.socket.parse_packet(packet)
             except socket.timeout, e:
                 #print "Socket.timeout: %s" % e
                 continue
@@ -801,7 +801,7 @@ class GameSocket:
         self.socket = None
         self.connected = False
         self.listener = None
-        self.packet_parser = PacketParser()
+        self.packet_parser = GamePacketParser()
         self.events = client_events
 
         # Transparently connect the ping event to the pong sender.
@@ -904,7 +904,7 @@ class GameSocket:
         
         # Trigger a general event on all packets. Passes the raw packet.
         try:
-            self.events[HON_SC_PACKET_RECV].trigger(**{'packet_id': packet_id, 'packet': packet})
+            self.events[HON_GSC_PACKET_RECV].trigger(**{'packet_id': packet_id, 'packet': packet})
         except KeyError:
             pass
         
@@ -938,4 +938,66 @@ class GameSocket:
         packet = c.build(Container(id=HON_CS_CHANNEL_MSG, message=unicode(message)))
         self.send(packet)
 
+class GamePacketParser:
+    """ A class to handle raw packet parsing. """
+    def __init__(self):
+        self.__packet_parsers = {}
+        self.__setup_parsers()
 
+    def __setup_parsers(self):
+        """ Add every known packet parser to the list of availble parsers. """
+        self.__add_parser(HON_SC_PING, self.parse_ping)
+        self.__add_parser(HON_SC_CHANNEL_MSG, self.parse_channel_message)
+    
+    def __add_parser(self, packet_id, function):
+        """ Registers a parser function for the specified packet. 
+            Ensures that only one parser exists for each packet.
+        """
+        if packet_id in self.__packet_parsers:
+            return False
+        self.__packet_parsers[packet_id] = function
+
+    def parse_id(self, packet):
+        """ Returns the packet's ID.
+            The ID is an unsigned short, or a 2 byte integer, which is located at bytes 3 and 4 
+            within the packet.
+        """
+        return struct.unpack('H', packet[2:4])[0]
+
+    def parse_data(self, packet_id, packet):
+        """ Pushes the packet through to a matching registered packet parser, which extracts any useful data 
+            into a dict of kwargs which can then be handed to any matching registered event handler.
+
+            Passes the packet to a packet parser so it can be parsed for data. The returned data
+            is then passed to each event handler that requests it as a list of named keywords which
+            are taken as arguments.
+        """
+        if packet_id in self.__packet_parsers:
+            parser = self.__packet_parsers[packet_id]
+            data = parser(packet)
+            return data
+        else:
+            raise HoNCoreError(12) # Unknown packet received.
+
+    def parse_ping(self, packet):
+        """ Pings sent every minute. Respond with pong. 
+            Packet ID: 
+        """
+        return {}
+
+    def parse_game_message(self, packet):
+        """ Triggered when a message is sent to the game lobby.
+            Returns the following:
+                `message`       The message sent.
+            Packet ID: 
+        """
+        c = Struct('channel_message',
+                   ULInt32('account_id'),
+                   ULInt32('channel_id'),
+                   CString('message')
+                  )
+        r = c.parse(packet)
+        return {
+            'message'   : r.message
+        }
+        
