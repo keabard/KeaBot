@@ -63,6 +63,9 @@ HON_SC_GAME_INVITE              = 0x25
 """ GameServer -> Client """
 
 HON_GSC_PACKET_RECV             = "HON_GSC_PACKET_RECV"
+HON_GSC_PING                           = 0x4c
+HON_GSC_AUTH_ACCEPTED         = 0x5c
+HON_GSC_CHANNEL_MSG    = 0x6c
 
 """ Client -> Server """
 HON_CS_PONG                     = 0x2A01
@@ -106,9 +109,11 @@ HON_CS_GAME_SERVER_INFO         = 0x1000
 """ Client -> GameServer """
 
 HON_CGS_PONG                    = 0
+HON_CGS_AUTH_INFO            = 0xc001
 
 # Dummy Events / Custom events?
 HON_SC_PACKET_RECV              = "HON_SC_PACKET_RECV"
+HON_GSC_PACKET_RECV            = "HON_GSC_PACKET_RECV"
 
 """ User Flags"""
 HON_FLAGS_NONE          = 0x00
@@ -131,4 +136,9 @@ HON_MODE_INVISIBLE      = 0x03
 """ Game Server"""
 GAME_SERVER_TYPE        = 90
 MAXIMUM_SERVER_PING     = 90
+
+HON_SERVER_VERSION  = "2.5.15.0"
+
+HON_HOST_ID                 = 1542367444
+HON_CONNECTION_ID     = 52175
 

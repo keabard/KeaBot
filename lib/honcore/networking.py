@@ -396,18 +396,6 @@ class ChatSocket:
             )
         packet = c.build(Container(id=HON_CS_GAME_INVITE, player=unicode(player)))
         self.send(packet)
-        
-    def send_game_server_ip(self, server_ip):
-        """ Sends a chosen game server ip to the chat server.
-            Packet ID: 0xf00
-        """
-        c = Struct("game_server_ip",
-                ULInt16("id"),
-                String("server_ip", len(server_ip)+1, encoding="utf8", padchar="\x00")
-            )
-        packet = c.build(Container(id=HON_CS_GAME_SERVER_IP, server_ip=unicode(server_ip)))
-        print "Sending game_server_ip packet to IP %s (%s) : %s (%s)"%(server_ip, len(server_ip), packet, len(packet))
-        self.send(packet)
     
 class PacketParser:
     """ A class to handle raw packet parsing. """
@@ -797,18 +785,27 @@ class GameSocket:
         be maintained, however the socket and listener will be re-created for
         each connection used. GC should pick up the old and unused ones.
     """
-    def __init__(self, client_events):
+    def __init__(self, game_events):
         self.socket = None
         self.connected = False
+        self.authenticated = False
         self.listener = None
         self.packet_parser = GamePacketParser()
-        self.events = client_events
+        self.events = game_events
 
         # Transparently connect the ping event to the pong sender.
-#        self.events[HON_SC_PING].connect(self.send_pong, priority=1)
+        self.events[HON_GSC_PING].connect(self.send_pong, priority=1)
 
         # Some internal handling of the authentication process is also needed
-#        self.events[HON_SC_AUTH_ACCEPTED].connect(self.on_auth_accepted, priority=1)
+        self.events[HON_GSC_AUTH_ACCEPTED].connect(self.on_auth_accepted, priority=1)
+        
+    @property
+    def is_authenticated(self):
+        """ The GameSocket becomes authenticated with the Game Server once
+            the `auth_accepted` packet has been received. The GameSocket will
+            then be authenticated until the connection is lost.
+        """
+        return self.authenticated
 
     @property
     def is_connected(self): 
@@ -822,13 +819,14 @@ class GameSocket:
         # The socket has been broken early.
         if self.listener.stopped is True and self.connected is True:
             self.connected = False
+            self.authenticated = False
         return self.connected
 
     def connect(self, address, port):
         """ Creates a connection to the game server and starts listening for packets.
         """
         try:
-            self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             #self.socket.bind(("", 0))
             self.socket.connect((address, port))
         except socket.timeout:
@@ -853,6 +851,7 @@ class GameSocket:
         """
 
         self.connected = False
+        self.authenticated = False
 
         try:
             self.socket.shutdown(socket.SHUT_RDWR)
@@ -901,7 +900,7 @@ class GameSocket:
     def parse_packet(self, packet):
         """ Core function to tie together all of the packet parsing. """
         packet_id = self.packet_parser.parse_id(packet)
-        
+
         # Trigger a general event on all packets. Passes the raw packet.
         try:
             self.events[HON_GSC_PACKET_RECV].trigger(**{'packet_id': packet_id, 'packet': packet})
@@ -923,8 +922,72 @@ class GameSocket:
             event = self.events[packet_id]
             event.trigger(**packet_data)
 
+    def on_auth_accepted(self, *p):
+        """ Set the authenticated state to True"""
+        print 'GAME AUTHENTICATED'
+        self.authenticated = True
+
     def send_pong(self):
+        print 'GAME PONG'
         self.send(struct.pack('H', HON_CS_PONG))
+
+    def send_auth_info(self, player_name, cookie, ip, match_key, account_id, auth_key, session_key):
+        """ Sends the chat server authentication request.
+            Takes 6 parameters.
+                `account_id`    An integer containing the player's account ID.
+                `cookie`        A 33 character string containing a cookie.
+                `ip`            A string containing the player's IP address.
+                `auth`          A string containing an authentication hash.
+                `protocol`      An integer containing the protocol version to be used.
+                `invis`         A boolean value, determening if invisible mode is used.
+            '\x00\x00\x01\xc0Heroes of Newerth\x002.5.15.0\x00\xa5X8W\xcf\xcb\x00[orKs]Keabard\x0044f45c275527c9788c9539ceaae966d0\x0082.224.196.215\x00a6779755f356999050748cb649c97502\x00\x00\x01\xdfG\x04\x00dcdd3df3e8bfc5b8c6622524052646766979ca47\x00787d2cbb8da095339e2b5f4b6f73588ea0fcdcbc\x00\x00\x00\x14\x05\x00\x00 N\x00\x00\x14\x00\x00\x00'
+            '\x00\x00\x01\xc0Heroes of Newerth\x002.5.15.0\x00\xa5X8W\xcf\xcb\x00[orKs]Keabard\x0044f45c275527c9788c9539ceaae966d0\x0082.224.196.215\x0068704589ea62cb9de4355b5c01250289\x00\x00\x01\xdfG\x04\x00dcdd3df3e8bfc5b8c6622524052646766979ca47\x00c7cf1c03c012229ed5783220f109b294c1bee8bc\x00\x00\x00\x14\x05\x00\x00 N\x00\x00\x14\x00\x00\x00'
+
+        """
+        c = Struct("login",
+                ULInt16("id"),
+                String("hon_name", len("Heroes of Newerth")+1, encoding="utf8", padchar = "\x00"),
+                String("server_version", len(HON_SERVER_VERSION)+1, encoding="utf8", padchar = "\x00"),
+                ULInt32("host_id"), 
+                ULInt16("connection_id"), 
+                String("player_name", len(player_name)+1, encoding="utf8", padchar = "\x00"),
+                String("cookie", len(cookie)+1, encoding="utf8", padchar = "\x00"),
+                String("ip", len(ip)+1, encoding="utf8", padchar = "\x00"),
+                String("match_key", len(match_key)+1, encoding="utf8", padchar = "\x00"), 
+                ULInt16("magic_int"), 
+                ULInt32("account_id"), 
+                String("auth_key", len(auth_key)+1, encoding="utf8", padchar = "\x00"),
+                String("session_key", len(session_key)+1, encoding="utf8", padchar="\x00"), 
+                ULInt32("magic_int2"), 
+                ULInt32("magic_int3"), 
+                ULInt32("magic_int4"), 
+                ULInt16("magic_int5")
+        )
+
+        packet = c.build(Container(id=HON_CGS_AUTH_INFO, 
+                                                hon_name="Heroes of Newerth", 
+                                                server_version=unicode(HON_SERVER_VERSION), 
+                                                host_id=HON_HOST_ID, 
+                                                connection_id=HON_CONNECTION_ID,
+                                                player_name=player_name,
+                                                cookie=cookie, 
+                                                ip=ip, 
+                                                match_key=match_key, 
+                                                magic_int=0x100, 
+                                                account_id=account_id, 
+                                                auth_key=auth_key, 
+                                                session_key=session_key, 
+                                                magic_int2=0x5140000, 
+                                                magic_int3=0x4e200000, 
+                                                magic_int4=0x140000, 
+                                                magic_int5=0x0))
+        
+        # print "Sending packet - 0x%x:%s:%s:%s:%s:0x%x:0x%x:0x%x" % (HON_CS_AUTH_INFO, account_id, cookie, ip, auth_hash, protocol, 0x01, 0x00)
+        try:
+            self.send(packet)
+        except socket.error, e:
+            if e.errno == 32:
+                raise GameServerError(206)
     
     def send_game_message(self, message):
         """ Sends the message to the game lobby
@@ -946,8 +1009,8 @@ class GamePacketParser:
 
     def __setup_parsers(self):
         """ Add every known packet parser to the list of availble parsers. """
-        self.__add_parser(HON_SC_PING, self.parse_ping)
-        self.__add_parser(HON_SC_CHANNEL_MSG, self.parse_channel_message)
+        self.__add_parser(HON_GSC_PING, self.parse_ping)
+        self.__add_parser(HON_GSC_CHANNEL_MSG, self.parse_game_message)
     
     def __add_parser(self, packet_id, function):
         """ Registers a parser function for the specified packet. 
@@ -991,7 +1054,7 @@ class GamePacketParser:
                 `message`       The message sent.
             Packet ID: 
         """
-        c = Struct('channel_message',
+        c = Struct('game_message',
                    ULInt32('account_id'),
                    ULInt32('channel_id'),
                    CString('message')

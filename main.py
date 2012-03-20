@@ -13,6 +13,7 @@ class BasicHoNClient(HoNClient):
 
     def setup_events(self):
         self.connect_event(HON_SC_PACKET_RECV, self.__on_packet)
+        self.connect_event(HON_GSC_PACKET_RECV, self.__on_game_packet)
         self.connect_event(HON_SC_AUTH_ACCEPTED, self.on_authenticated)
         self.connect_event(HON_SC_WHISPER, self.on_whisper)
         self.connect_event(HON_SC_JOINED_CHANNEL, self.on_joined_channel)
@@ -23,6 +24,15 @@ class BasicHoNClient(HoNClient):
         print "<< 0x%x | %i bytes" % (packet_id, len(packet))
         """ Pipe the raw packet to a file for debugging. """
         f = open("raw-packets/0x%x" % packet_id, "a+")
+        #print "%s (%s)"%(struct.unpack('<H%ss'%(len(packet[2:])-2), packet[2:]), struct.unpack('>H', packet[:2]))
+        print >>f, "%s (%s)"%(struct.unpack('<H%ss'%(len(packet[2:])-2), packet[2:]), struct.unpack('>H', packet[:2]))
+        #f.flush()
+        f.close()
+        
+    def __on_game_packet(self, packet_id, packet):
+        print "<< 0x%x | %i bytes" % (packet_id, len(packet))
+        """ Pipe the raw packet to a file for debugging. """
+        f = open("raw-packets/game-0x%x" % packet_id, "a+")
         #print "%s (%s)"%(struct.unpack('<H%ss'%(len(packet[2:])-2), packet[2:]), struct.unpack('>H', packet[:2]))
         print >>f, "%s (%s)"%(struct.unpack('<H%ss'%(len(packet[2:])-2), packet[2:]), struct.unpack('>H', packet[:2]))
         #f.flush()

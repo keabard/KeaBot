@@ -23,10 +23,11 @@ class HoNClient(object):
     def __init__(self):
         self.config = _config_defaults
         self.__events = {}
+        self.__game_events = {}
         self.__create_events()
         self.__setup_events()
         self.__chat_socket = ChatSocket(self.__events)
-        self.__game_socket = GameSocket({})
+        self.__game_socket = GameSocket(self.__game_events)
         self.__listener = None
         self.__requester = Requester()
         self.account = None
@@ -38,6 +39,7 @@ class HoNClient(object):
             As more packets are reverse engineered they should be added here so that 
             the client can handle them.
         """
+        # Chat events
         self.__events[HON_SC_AUTH_ACCEPTED] = Event("Auth Accepted", HON_SC_AUTH_ACCEPTED)
         self.__events[HON_SC_PING] = Event("Ping", HON_SC_PING)
         self.__events[HON_SC_CHANNEL_MSG] = Event("Channel Message", HON_SC_CHANNEL_MSG)
@@ -51,11 +53,17 @@ class HoNClient(object):
         self.__events[HON_SC_GAME_INVITE] = Event("Game Invite", HON_SC_GAME_INVITE)
         self.__events[HON_SC_PACKET_RECV] = Event("Packet Received", HON_SC_PACKET_RECV)
         self.__events[HON_SC_REQUEST_NOTIFICATION] = Event("Buddy invite received", HON_SC_REQUEST_NOTIFICATION)
+        
+        # Game events
+        self.__game_events[HON_GSC_AUTH_ACCEPTED] = Event("Game Auth Accepted", HON_GSC_AUTH_ACCEPTED)
+        self.__game_events[HON_GSC_PING] = Event("Game Ping", HON_GSC_PING)
+        self.__game_events[HON_GSC_PACKET_RECV] = Event("Game Packet Received", HON_GSC_PACKET_RECV)
 
     def __setup_events(self):
         """ Transparent handling of some data is needed so that the client
             can track things such as users and channels.
         """
+        # Chat events
         self.connect_event(HON_SC_JOINED_CHANNEL, self.__on_joined_channel, priority=1)
         self.connect_event(HON_SC_ENTERED_CHANNEL, self.__on_entered_channel, priority=1)
 
@@ -233,6 +241,7 @@ class HoNClient(object):
             Connects that game socket to the correct address and port. Any exceptions are raised to the top method.
             Finally sends a valid authentication packet. Any exceptions are raised to the top method.
         """
+
         if self.account == None or self.account.cookie == None or self.account.game_session_key == None or self.account.auth_hash == None:
             raise GameServerError(205)
        
@@ -245,16 +254,19 @@ class HoNClient(object):
                 raise GameServerError(208) # Could not connect to the game server.
             elif e.code == 11: # Socket timed out.
                 raise GameServerError(201)
-            
+        
+        print 'ABOUT TO AUTH'
         # Send initial authentication request to the game server.
         try:
-            self.__game_socket.send_auth_info(self.account.account_id,
-                                              self.account.cookie, 
-                                              self.account.ip, 
-                                              self.account.auth_hash,  
-                                              self.config['protocol'], 
-                                              self.config['invis'])
-        except ChatServerError:
+            self.__game_socket.send_auth_info(
+                                              player_name = self.account.nickname, 
+                                              cookie = self.account.cookie,  
+                                              ip = self.account.ip, 
+                                              match_key = self.account.game_match_key, 
+                                              account_id = self.account.account_id, 
+                                              auth_key = self.account.auth_hash, 
+                                              session_key = self.account.game_session_key)
+        except GameServerError:
             raise # Re-raise the exception.
         
         # The idea is to give 10 seconds for the chat server to respond to the authentication request.
@@ -262,22 +274,22 @@ class HoNClient(object):
         # NOTE: Lag will make this sort of iffy....
         attempts = 1
         while attempts is not 10:
-            if self.__chat_socket.is_authenticated:
+            if self.__game_socket.is_authenticated:
                 return True
             else:
                 time.sleep(1)
                 attempts += 1
-        raise ChatServerError(200) # Server did not respond to the authentication request 
+        raise GameServerError(200) # Server did not respond to the authentication request 
         
-    def _chat_disconnect(self):
+    def _game_disconnect(self):
         """ Disconnect gracefully from the chat server and close & remove the socket."""
-        if self.__chat_socket is not None:
-            self.__chat_socket.connected = False # Safer to stop the thread with this first.
+        if self.__game_socket is not None:
+            self.__game_socket.connected = False # Safer to stop the thread with this first.
             try:
-                self.__chat_socket.socket.shutdown(socket.SHUT_RDWR)
-                self.__chat_socket.socket.close()
+                self.__game_socket.socket.shutdown(socket.SHUT_RDWR)
+                self.__game_socket.socket.close()
             except socket.error:
-                raise ChatServerError(209)
+                raise GameServerError(209)
 
     @property
     def is_logged_in(self):
@@ -396,6 +408,7 @@ class HoNClient(object):
                 acc_key_hash = User Account Key Hash
             }
         """
+        print raw
         servers_dict = {}
         servers_dict['server_list'] = raw['server_list']
         servers_dict['acc_key'] = raw['acc_key']
@@ -476,8 +489,14 @@ class HoNClient(object):
         """
         server_infos = self.pick_game_server(MAXIMUM_SERVER_PING)
         print "CHOSEN SERVER : %s"%server_infos
-        self.send_game_server_ip('%s:%s'%(server_infos['server_info']['ip'],
-                                          server_infos['server_info']['port']))
+        # Save game server infos into account
+        self.account.game_session_key = server_infos['server_info']['session']
+        self.account.game_ip = server_infos['server_info']['ip']
+        self.account.game_port = int(server_infos['server_info']['port'])
+        self.account.game_host_id = server_infos['server_info']['server_id']
+        self.account.game_match_key = server_infos['acc_key']
+        print 'ABOUT TO CONNECT'
+        self._game_connect()
         
     def pick_game_server(self, maximum_ping=150):
         """ Request masterserver for server list, and return the first game server infos with a ping under
@@ -506,7 +525,10 @@ class HoNClient(object):
         try:
             self.__events[event_id].connect(method, priority)
         except KeyError:
-            raise HoNCoreError(13) # Unknown event ID 
+            try:
+                self.__game_events[event_id].connect(method, priority)
+            except:
+                raise HoNCoreError(13) # Unknown event ID 
     
     def disconnect_event(self, event_id, method):
         """ Wrapper method for disconnecting events. """
@@ -516,7 +538,10 @@ class HoNClient(object):
             if e.id == 14: # Method is not connected to this event.
                 raise
         except KeyError:
-            raise HoNCoreError(13) # Unknown event ID
+            try:
+                self.__game_events[event_id].disconnect(method)
+            except:
+                raise HoNCoreError(13) # Unknown event ID
 
     def id_to_channel(self, channel_id):
         """ Wrapper function to return the channel name for the given ID.
