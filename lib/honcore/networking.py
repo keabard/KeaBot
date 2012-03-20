@@ -28,6 +28,7 @@ class SocketListener(threading.Thread):
         while not self.stopped:
             try:
                 packet = self.socket.recv()
+                print 'PACKET RECEIVED :%s'%packet
                 if not packet:
                     #print "Empty packet received, socket terminated."
                     self.stopped = True
@@ -905,6 +906,7 @@ class GameSocket:
         try:
             self.events[HON_GSC_PACKET_RECV].trigger(**{'packet_id': packet_id, 'packet': packet})
         except KeyError:
+            print 'KEY ERROR ON PARSE PACKET'
             pass
         
         # Trim the length and packet id from the packet
@@ -919,6 +921,7 @@ class GameSocket:
             return
         
         if packet_id in self.events:
+            print 'PACKET ID IN SELF.EVENTS'
             event = self.events[packet_id]
             event.trigger(**packet_data)
 
@@ -931,7 +934,7 @@ class GameSocket:
         print 'GAME PONG'
         self.send(struct.pack('H', HON_CS_PONG))
 
-    def send_auth_info(self, player_name, cookie, ip, match_key, account_id, auth_key, session_key):
+    def send_auth_info(self, player_name, session_key, ip, acc_key, account_id, acc_key_hash, auth_hash):
         """ Sends the chat server authentication request.
             Takes 6 parameters.
                 `account_id`    An integer containing the player's account ID.
@@ -945,42 +948,48 @@ class GameSocket:
 
         """
         c = Struct("login",
+                ULInt16("header_int"), 
                 ULInt16("id"),
                 String("hon_name", len("Heroes of Newerth")+1, encoding="utf8", padchar = "\x00"),
                 String("server_version", len(HON_SERVER_VERSION)+1, encoding="utf8", padchar = "\x00"),
                 ULInt32("host_id"), 
                 ULInt16("connection_id"), 
+                Byte("break_byte"), 
                 String("player_name", len(player_name)+1, encoding="utf8", padchar = "\x00"),
-                String("cookie", len(cookie)+1, encoding="utf8", padchar = "\x00"),
+                String("session_key", len(session_key)+1, encoding="utf8", padchar = "\x00"),
                 String("ip", len(ip)+1, encoding="utf8", padchar = "\x00"),
-                String("match_key", len(match_key)+1, encoding="utf8", padchar = "\x00"), 
+                String("acc_key", len(acc_key)+1, encoding="utf8", padchar = "\x00"), 
                 ULInt16("magic_int"), 
                 ULInt32("account_id"), 
-                String("auth_key", len(auth_key)+1, encoding="utf8", padchar = "\x00"),
-                String("session_key", len(session_key)+1, encoding="utf8", padchar="\x00"), 
+                String("acc_key_hash", len(acc_key_hash)+1, encoding="utf8", padchar = "\x00"),
+                String("auth_hash", len(auth_hash)+1, encoding="utf8", padchar="\x00"), 
                 ULInt32("magic_int2"), 
                 ULInt32("magic_int3"), 
                 ULInt32("magic_int4"), 
                 ULInt16("magic_int5")
         )
 
-        packet = c.build(Container(id=HON_CGS_AUTH_INFO, 
-                                                hon_name="Heroes of Newerth", 
-                                                server_version=unicode(HON_SERVER_VERSION), 
-                                                host_id=HON_HOST_ID, 
-                                                connection_id=HON_CONNECTION_ID,
-                                                player_name=player_name,
-                                                cookie=cookie, 
-                                                ip=ip, 
-                                                match_key=match_key, 
-                                                magic_int=0x100, 
-                                                account_id=account_id, 
-                                                auth_key=auth_key, 
-                                                session_key=session_key, 
-                                                magic_int2=0x5140000, 
-                                                magic_int3=0x4e200000, 
-                                                magic_int4=0x140000, 
-                                                magic_int5=0x0))
+        print '%s - %s - %s - %s'%(len(session_key), len(acc_key), len(acc_key_hash), len(auth_hash))
+
+        packet = c.build(Container(header_int=0, 
+                                   id=HON_CGS_AUTH_INFO, 
+                                    hon_name=unicode("Heroes of Newerth"), 
+                                    server_version=unicode(HON_SERVER_VERSION), 
+                                    host_id=HON_HOST_ID, 
+                                    connection_id=HON_CONNECTION_ID,
+                                    break_byte = 0, 
+                                    player_name=unicode(player_name),
+                                    session_key=unicode(session_key), 
+                                    ip=unicode(ip), 
+                                    acc_key=unicode(acc_key), 
+                                    magic_int=0x100, 
+                                    account_id=account_id, 
+                                    acc_key_hash=unicode(acc_key_hash), 
+                                    auth_hash=unicode(auth_hash), 
+                                    magic_int2=0x5140000, 
+                                    magic_int3=0x4e200000, 
+                                    magic_int4=0x140000, 
+                                    magic_int5=0x0))
         
         # print "Sending packet - 0x%x:%s:%s:%s:%s:0x%x:0x%x:0x%x" % (HON_CS_AUTH_INFO, account_id, cookie, ip, auth_hash, protocol, 0x01, 0x00)
         try:
@@ -1025,6 +1034,7 @@ class GamePacketParser:
             The ID is an unsigned short, or a 2 byte integer, which is located at bytes 3 and 4 
             within the packet.
         """
+        print packet, len(packet)
         return struct.unpack('H', packet[2:4])[0]
 
     def parse_data(self, packet_id, packet):

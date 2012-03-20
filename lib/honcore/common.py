@@ -67,7 +67,8 @@ class Account:
         self.game_session_key = None
         self.game_ip = None
         self.game_port = None
-        self.game_match_key = None
+        self.acc_key = None
+        self.acc_key_hash = None
         self.in_game = False
         
         # Chat attributes

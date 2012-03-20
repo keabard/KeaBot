@@ -260,12 +260,12 @@ class HoNClient(object):
         try:
             self.__game_socket.send_auth_info(
                                               player_name = self.account.nickname, 
-                                              cookie = self.account.cookie,  
+                                              session_key = self.account.cookie,  
                                               ip = self.account.ip, 
-                                              match_key = self.account.game_match_key, 
+                                              acc_key = self.account.acc_key, 
                                               account_id = self.account.account_id, 
-                                              auth_key = self.account.auth_hash, 
-                                              session_key = self.account.game_session_key)
+                                              acc_key_hash = self.account.acc_key_hash, 
+                                              auth_hash = self.account.auth_hash)
         except GameServerError:
             raise # Re-raise the exception.
         
@@ -494,8 +494,9 @@ class HoNClient(object):
         self.account.game_ip = server_infos['server_info']['ip']
         self.account.game_port = int(server_infos['server_info']['port'])
         self.account.game_host_id = server_infos['server_info']['server_id']
-        self.account.game_match_key = server_infos['acc_key']
-        print 'ABOUT TO CONNECT'
+        self.account.acc_key = server_infos['acc_key']
+        self.account.acc_key_hash = server_infos['acc_key_hash']
+        print 'ABOUT TO CONNECT : SESSION : %s (%s) - ACC_KEY : %s (%s) - ACC_KEY_HASH : %s (%s) - AUTH HASH : %s (%s) - COOKIE : %s (%s)'%(self.account.game_session_key, len(self.account.game_session_key), self.account.acc_key, len(self.account.acc_key), server_infos['acc_key_hash'], len(server_infos['acc_key_hash']), self.account.auth_hash, len(self.account.auth_hash), self.account.cookie, len(self.account.cookie))
         self._game_connect()
         
     def pick_game_server(self, maximum_ping=150):
