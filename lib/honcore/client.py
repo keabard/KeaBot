@@ -266,6 +266,7 @@ class HoNClient(object):
                                               account_id = self.account.account_id, 
                                               acc_key_hash = self.account.acc_key_hash, 
                                               auth_hash = self.account.auth_hash)
+            #self.__game_socket.send_magic_packet()
         except GameServerError:
             raise # Re-raise the exception.
         

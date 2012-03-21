@@ -28,7 +28,6 @@ class SocketListener(threading.Thread):
         while not self.stopped:
             try:
                 packet = self.socket.recv()
-                print 'PACKET RECEIVED :%s'%packet
                 if not packet:
                     #print "Empty packet received, socket terminated."
                     self.stopped = True
@@ -880,21 +879,15 @@ class GameSocket:
         return True
 
     def recv(self):
-        # Packet length is packed into 2 bytes at the start.
-        packet_len = self.socket.recv(2)
-        if not packet_len:
-            return
-        # Add the first two bytes to the packet
-        packet = packet_len
-        # Extract the packet length.
-        packet_len = struct.unpack('>H', packet_len)[0]
-
-        # Receive until the entire packet has been received.
-        received_len = to_get = 0
-        while received_len < packet_len:
-            to_get = packet_len - received_len
-            packet += self.socket.recv(to_get)
-            received_len = len(packet) - 2
+        
+        packet = self.socket.recv(4096)
+        
+#        # Receive until the entire packet has been received.
+#        received_len = to_get = 0
+#        while received_len < packet_len:
+#            to_get = packet_len - received_len
+#            packet += self.socket.recv(to_get)
+#            received_len = len(packet) - 2
         
         return packet
     
@@ -927,7 +920,6 @@ class GameSocket:
 
     def on_auth_accepted(self, *p):
         """ Set the authenticated state to True"""
-        print 'GAME AUTHENTICATED'
         self.authenticated = True
 
     def send_pong(self):
@@ -969,8 +961,6 @@ class GameSocket:
                 ULInt16("magic_int5")
         )
 
-        print '%s - %s - %s - %s'%(len(cookie), len(acc_key), len(acc_key_hash), len(auth_hash))
-
         packet = c.build(Container(header_int=0, 
                                    id=HON_CGS_AUTH_INFO, 
                                     hon_name=unicode("Heroes of Newerth"), 
@@ -991,7 +981,6 @@ class GameSocket:
                                     magic_int4=0x140000, 
                                     magic_int5=0x0))
         
-        # print "Sending packet - 0x%x:%s:%s:%s:%s:0x%x:0x%x:0x%x" % (HON_CS_AUTH_INFO, account_id, cookie, ip, auth_hash, protocol, 0x01, 0x00)
         try:
             self.send(packet)
         except socket.error, e:
@@ -1034,7 +1023,6 @@ class GamePacketParser:
             The ID is an unsigned short, or a 2 byte integer, which is located at bytes 3 and 4 
             within the packet.
         """
-        print packet, len(packet)
         return struct.unpack('H', packet[2:4])[0]
 
     def parse_data(self, packet_id, packet):

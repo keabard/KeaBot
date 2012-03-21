@@ -32,11 +32,12 @@ class BasicHoNClient(HoNClient):
     def __on_game_packet(self, packet_id, packet):
         print "<< 0x%x | %i bytes" % (packet_id, len(packet))
         """ Pipe the raw packet to a file for debugging. """
-        f = open("raw-packets/game-0x%x" % packet_id, "a+")
-        #print "%s (%s)"%(struct.unpack('<H%ss'%(len(packet[2:])-2), packet[2:]), struct.unpack('>H', packet[:2]))
-        print >>f, "%s (%s)"%(struct.unpack('<H%ss'%(len(packet[2:])-2), packet[2:]), struct.unpack('>H', packet[:2]))
-        #f.flush()
-        f.close()
+        if len(packet) > 2:
+            f = open("raw-packets/game-0x%x" % packet_id, "a+")
+            #print "%s (%s)"%(struct.unpack('<H%ss'%(len(packet[2:])-2), packet[2:]), struct.unpack('>H', packet[:2]))
+            print >>f, "%s (%s)"%(struct.unpack('<H%ss'%(len(packet[2:])-2), packet[2:]), struct.unpack('>H', packet[:2]))
+            #f.flush()
+            f.close()
 
     def on_authenticated(self):
         print "Connected"

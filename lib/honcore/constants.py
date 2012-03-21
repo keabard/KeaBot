@@ -63,9 +63,9 @@ HON_SC_GAME_INVITE              = 0x25
 """ GameServer -> Client """
 
 HON_GSC_PACKET_RECV             = "HON_GSC_PACKET_RECV"
-HON_GSC_PING                           = 0x4c
-HON_GSC_AUTH_ACCEPTED         = 0x5c
-HON_GSC_CHANNEL_MSG    = 0x6c
+HON_GSC_PING                    = 0x4c
+HON_GSC_AUTH_ACCEPTED           = 0x5c
+HON_GSC_CHANNEL_MSG             = 0x6c
 
 """ Client -> Server """
 HON_CS_PONG                     = 0x2A01
