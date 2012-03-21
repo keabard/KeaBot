@@ -934,7 +934,7 @@ class GameSocket:
         print 'GAME PONG'
         self.send(struct.pack('H', HON_CS_PONG))
 
-    def send_auth_info(self, player_name, session_key, ip, acc_key, account_id, acc_key_hash, auth_hash):
+    def send_auth_info(self, player_name, cookie, ip, acc_key, account_id, acc_key_hash, auth_hash):
         """ Sends the chat server authentication request.
             Takes 6 parameters.
                 `account_id`    An integer containing the player's account ID.
@@ -956,20 +956,20 @@ class GameSocket:
                 ULInt16("connection_id"), 
                 Byte("break_byte"), 
                 String("player_name", len(player_name)+1, encoding="utf8", padchar = "\x00"),
-                String("session_key", len(session_key)+1, encoding="utf8", padchar = "\x00"),
+                String("cookie", len(cookie)+1, encoding="utf8", padchar = "\x00"),
                 String("ip", len(ip)+1, encoding="utf8", padchar = "\x00"),
                 String("acc_key", len(acc_key)+1, encoding="utf8", padchar = "\x00"), 
                 ULInt16("magic_int"), 
                 ULInt32("account_id"), 
-                String("acc_key_hash", len(acc_key_hash)+1, encoding="utf8", padchar = "\x00"),
                 String("auth_hash", len(auth_hash)+1, encoding="utf8", padchar="\x00"), 
+                String("acc_key_hash", len(acc_key_hash)+1, encoding="utf8", padchar = "\x00"),
                 ULInt32("magic_int2"), 
                 ULInt32("magic_int3"), 
                 ULInt32("magic_int4"), 
                 ULInt16("magic_int5")
         )
 
-        print '%s - %s - %s - %s'%(len(session_key), len(acc_key), len(acc_key_hash), len(auth_hash))
+        print '%s - %s - %s - %s'%(len(cookie), len(acc_key), len(acc_key_hash), len(auth_hash))
 
         packet = c.build(Container(header_int=0, 
                                    id=HON_CGS_AUTH_INFO, 
@@ -979,13 +979,13 @@ class GameSocket:
                                     connection_id=HON_CONNECTION_ID,
                                     break_byte = 0, 
                                     player_name=unicode(player_name),
-                                    session_key=unicode(session_key), 
+                                    cookie=unicode(cookie), 
                                     ip=unicode(ip), 
                                     acc_key=unicode(acc_key), 
                                     magic_int=0x100, 
                                     account_id=account_id, 
-                                    acc_key_hash=unicode(acc_key_hash), 
                                     auth_hash=unicode(auth_hash), 
+                                    acc_key_hash=unicode(acc_key_hash), 
                                     magic_int2=0x5140000, 
                                     magic_int3=0x4e200000, 
                                     magic_int4=0x140000, 

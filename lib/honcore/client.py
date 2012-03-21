@@ -260,7 +260,7 @@ class HoNClient(object):
         try:
             self.__game_socket.send_auth_info(
                                               player_name = self.account.nickname, 
-                                              session_key = self.account.cookie,  
+                                              cookie = self.account.cookie,  
                                               ip = self.account.ip, 
                                               acc_key = self.account.acc_key, 
                                               account_id = self.account.account_id, 
