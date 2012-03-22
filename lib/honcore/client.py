@@ -58,6 +58,7 @@ class HoNClient(object):
         self.__game_events[HON_GSC_AUTH_ACCEPTED] = Event("Game Auth Accepted", HON_GSC_AUTH_ACCEPTED)
         self.__game_events[HON_GSC_PING] = Event("Game Ping", HON_GSC_PING)
         self.__game_events[HON_GSC_PACKET_RECV] = Event("Game Packet Received", HON_GSC_PACKET_RECV)
+        self.__game_events[HON_GSC_TIMEOUT] = Event("Game Server Timeout", HON_GSC_TIMEOUT)
 
     def __setup_events(self):
         """ Transparent handling of some data is needed so that the client
@@ -66,6 +67,9 @@ class HoNClient(object):
         # Chat events
         self.connect_event(HON_SC_JOINED_CHANNEL, self.__on_joined_channel, priority=1)
         self.connect_event(HON_SC_ENTERED_CHANNEL, self.__on_entered_channel, priority=1)
+        
+        # Game events
+        self.connect_event(HON_GSC_TIMEOUT, self.__on_game_timeout, priority=1)
 
     def __on_initial_statuses(self, users):
         """ Sets the status and flags for each user. """
@@ -90,6 +94,20 @@ class HoNClient(object):
         """
         if user.account_id not in self.__users:
             self.__users[user.account_id] = user
+            
+    def __on_game_timeout(self):
+        """ Handle the game server timeout gently.
+        """
+        print 'Game server timed out, closing connection...'
+        
+        self.account.game_session_key = None
+        self.account.game_ip = None
+        self.account.game_port = None
+        self.account.game_host_id = None
+        self.account.acc_key = None
+        self.account.acc_key_hash = None
+        
+        self._game_disconnect()
 
     def _configure(self, *args, **kwargs):
         """ Set up some configuration for the client and the requester. 
@@ -255,7 +273,6 @@ class HoNClient(object):
             elif e.code == 11: # Socket timed out.
                 raise GameServerError(201)
         
-        print 'ABOUT TO AUTH'
         # Send initial authentication request to the game server.
         try:
             self.__game_socket.send_auth_info(
@@ -266,7 +283,7 @@ class HoNClient(object):
                                               account_id = self.account.account_id, 
                                               acc_key_hash = self.account.acc_key_hash, 
                                               auth_hash = self.account.auth_hash)
-            #self.__game_socket.send_magic_packet()
+            self.__game_socket.send_magic_packet()
         except GameServerError:
             raise # Re-raise the exception.
         
@@ -283,7 +300,7 @@ class HoNClient(object):
         raise GameServerError(200) # Server did not respond to the authentication request 
         
     def _game_disconnect(self):
-        """ Disconnect gracefully from the chat server and close & remove the socket."""
+        """ Disconnect gracefully from the game server and close & remove the socket."""
         if self.__game_socket is not None:
             self.__game_socket.connected = False # Safer to stop the thread with this first.
             try:
@@ -320,6 +337,26 @@ class HoNClient(object):
             return False
         # Check the status of the chat socket object.
         if self.__chat_socket.is_connected is False:
+            return False
+        # Any other checks to be done..? 
+        return True
+        
+    @property
+    def is_connected_to_game(self):
+        """ Test for game server connection. 
+
+            The line of thought here is, the client can not be connected to the game server
+            until it is authenticated, the game socket can be connected as long as the server
+            doesn't deny or drop the connection.
+        """
+        # Check the socket exists.
+        if self.__game_socket is None:
+            return False
+        # Ensure the user is authenticated against the game server
+        if self.__game_socket.is_authenticated is False:
+            return False
+        # Check the status of the game socket object.
+        if self.__game_socket.is_connected is False:
             return False
         # Any other checks to be done..? 
         return True
@@ -409,7 +446,6 @@ class HoNClient(object):
                 acc_key_hash = User Account Key Hash
             }
         """
-        print raw
         servers_dict = {}
         servers_dict['server_list'] = raw['server_list']
         servers_dict['acc_key'] = raw['acc_key']
@@ -489,7 +525,6 @@ class HoNClient(object):
                 'game_name' A string containing the game name.
         """
         server_infos = self.pick_game_server(MAXIMUM_SERVER_PING)
-        print "CHOSEN SERVER : %s"%server_infos
         # Save game server infos into account
         self.account.game_session_key = server_infos['server_info']['session']
         self.account.game_ip = server_infos['server_info']['ip']
@@ -497,7 +532,6 @@ class HoNClient(object):
         self.account.game_host_id = server_infos['server_info']['server_id']
         self.account.acc_key = server_infos['acc_key']
         self.account.acc_key_hash = server_infos['acc_key_hash']
-        print 'ABOUT TO CONNECT : SESSION : %s (%s) - ACC_KEY : %s (%s) - ACC_KEY_HASH : %s (%s) - AUTH HASH : %s (%s) - COOKIE : %s (%s)'%(self.account.game_session_key, len(self.account.game_session_key), self.account.acc_key, len(self.account.acc_key), server_infos['acc_key_hash'], len(server_infos['acc_key_hash']), self.account.auth_hash, len(self.account.auth_hash), self.account.cookie, len(self.account.cookie))
         self._game_connect()
         
     def pick_game_server(self, maximum_ping=150):
@@ -632,7 +666,7 @@ class Event:
         """
         self.handlers.append(self.ConnectedMethod(function, priority))
 
-    def disonnect(self, method):
+    def disconnect(self, method):
         """ Hopefully it can be used to remove event handlers from this event
             object so they are no longer triggered. Useful if say, an event only 
             needs to be triggered once, for a reminder or such.

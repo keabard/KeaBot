@@ -21,7 +21,7 @@ class BasicHoNClient(HoNClient):
         self.connect_event(HON_SC_REQUEST_NOTIFICATION, self.on_buddy_invite)
 
     def __on_packet(self, packet_id, packet):
-        print "<< 0x%x | %i bytes" % (packet_id, len(packet))
+        print "<<CHAT 0x%x | %i bytes" % (packet_id, len(packet))
         """ Pipe the raw packet to a file for debugging. """
         f = open("raw-packets/0x%x" % packet_id, "a+")
         #print "%s (%s)"%(struct.unpack('<H%ss'%(len(packet[2:])-2), packet[2:]), struct.unpack('>H', packet[:2]))
@@ -30,7 +30,7 @@ class BasicHoNClient(HoNClient):
         f.close()
         
     def __on_game_packet(self, packet_id, packet):
-        print "<< 0x%x | %i bytes" % (packet_id, len(packet))
+        print "<<GAME 0x%x | %i bytes | %s" % (packet_id, len(packet), packet)
         """ Pipe the raw packet to a file for debugging. """
         if len(packet) > 2:
             f = open("raw-packets/game-0x%x" % packet_id, "a+")
@@ -128,10 +128,16 @@ class BasicHoNClient(HoNClient):
     
     def logout(self):
         print "Disconnecting...."
+        
+        if self.is_connected_to_game:
+            try:
+                self._game_disconnect()
+            except GameServerError, e:
+                print e
+            
         if not self.is_connected:
             self.logged_in = False
             return
-
         try:
             self._chat_disconnect()
         except ChatServerError, e:

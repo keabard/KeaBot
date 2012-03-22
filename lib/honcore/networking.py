@@ -914,7 +914,6 @@ class GameSocket:
             return
         
         if packet_id in self.events:
-            print 'PACKET ID IN SELF.EVENTS'
             event = self.events[packet_id]
             event.trigger(**packet_data)
 
@@ -928,16 +927,14 @@ class GameSocket:
 
     def send_auth_info(self, player_name, cookie, ip, acc_key, account_id, acc_key_hash, auth_hash):
         """ Sends the chat server authentication request.
-            Takes 6 parameters.
-                `account_id`    An integer containing the player's account ID.
-                `cookie`        A 33 character string containing a cookie.
+            Takes 7 parameters.
+                `player_name`   A string containing the player name 
+                `cookie`        A 32 character string containing a cookie.
                 `ip`            A string containing the player's IP address.
-                `auth`          A string containing an authentication hash.
-                `protocol`      An integer containing the protocol version to be used.
-                `invis`         A boolean value, determening if invisible mode is used.
-            '\x00\x00\x01\xc0Heroes of Newerth\x002.5.15.0\x00\xa5X8W\xcf\xcb\x00[orKs]Keabard\x0044f45c275527c9788c9539ceaae966d0\x0082.224.196.215\x00a6779755f356999050748cb649c97502\x00\x00\x01\xdfG\x04\x00dcdd3df3e8bfc5b8c6622524052646766979ca47\x00787d2cbb8da095339e2b5f4b6f73588ea0fcdcbc\x00\x00\x00\x14\x05\x00\x00 N\x00\x00\x14\x00\x00\x00'
-            '\x00\x00\x01\xc0Heroes of Newerth\x002.5.15.0\x00\xa5X8W\xcf\xcb\x00[orKs]Keabard\x0044f45c275527c9788c9539ceaae966d0\x0082.224.196.215\x0068704589ea62cb9de4355b5c01250289\x00\x00\x01\xdfG\x04\x00dcdd3df3e8bfc5b8c6622524052646766979ca47\x00c7cf1c03c012229ed5783220f109b294c1bee8bc\x00\x00\x00\x14\x05\x00\x00 N\x00\x00\x14\x00\x00\x00'
-
+                `acc_key`       A 32 character string containing the acc_key, provided by masterserver
+                `account_id`    An integer containing the player's account ID.
+                `acc_key_hash`  A 40 character string containing a hash of the acc_key, provided by masterserver
+                `auth_hash`     A 40 character string containing an authentication hash.
         """
         c = Struct("login",
                 ULInt16("header_int"), 
@@ -983,9 +980,22 @@ class GameSocket:
         
         try:
             self.send(packet)
+            self.authenticated = True
         except socket.error, e:
             if e.errno == 32:
                 raise GameServerError(206)
+                
+    def send_magic_packet(self):
+        """ Sends the post-authentication magic packet to the game server
+            Packet ID : 0xc9010000
+        """
+        
+        c = Struct("magic_packet",
+                   ULInt32("id"))
+                   
+        packet = c.build(Container(id=HON_CGS_AUTH_MAGIC_PACKET))
+        self.send(packet)
+                   
     
     def send_game_message(self, message):
         """ Sends the message to the game lobby
@@ -1009,6 +1019,7 @@ class GamePacketParser:
         """ Add every known packet parser to the list of availble parsers. """
         self.__add_parser(HON_GSC_PING, self.parse_ping)
         self.__add_parser(HON_GSC_CHANNEL_MSG, self.parse_game_message)
+        self.__add_parser(HON_GSC_TIMEOUT, self.parse_timeout)
     
     def __add_parser(self, packet_id, function):
         """ Registers a parser function for the specified packet. 
@@ -1023,7 +1034,7 @@ class GamePacketParser:
             The ID is an unsigned short, or a 2 byte integer, which is located at bytes 3 and 4 
             within the packet.
         """
-        return struct.unpack('H', packet[2:4])[0]
+        return struct.unpack('I', packet[0:4])[0]
 
     def parse_data(self, packet_id, packet):
         """ Pushes the packet through to a matching registered packet parser, which extracts any useful data 
@@ -1043,6 +1054,12 @@ class GamePacketParser:
     def parse_ping(self, packet):
         """ Pings sent every minute. Respond with pong. 
             Packet ID: 
+        """
+        return {}
+        
+    def parse_timeout(self, packet):
+        """ Game server timeout. When received, disconnect client from game server 
+            Packet ID: 0x51010000
         """
         return {}
 

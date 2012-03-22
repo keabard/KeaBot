@@ -66,6 +66,7 @@ HON_GSC_PACKET_RECV             = "HON_GSC_PACKET_RECV"
 HON_GSC_PING                    = 0x4c
 HON_GSC_AUTH_ACCEPTED           = 0x5c
 HON_GSC_CHANNEL_MSG             = 0x6c
+HON_GSC_TIMEOUT                 = 0x51010000
 
 """ Client -> Server """
 HON_CS_PONG                     = 0x2A01
@@ -109,7 +110,8 @@ HON_CS_GAME_SERVER_INFO         = 0x1000
 """ Client -> GameServer """
 
 HON_CGS_PONG                    = 0
-HON_CGS_AUTH_INFO            = 0xc001
+HON_CGS_AUTH_INFO               = 0xc001
+HON_CGS_AUTH_MAGIC_PACKET       = 0xc901cbcf
 
 # Dummy Events / Custom events?
 HON_SC_PACKET_RECV              = "HON_SC_PACKET_RECV"
