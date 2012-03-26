@@ -798,6 +798,7 @@ class GameSocket:
 
         # Some internal handling of the authentication process is also needed
         self.events[HON_GSC_AUTH_ACCEPTED].connect(self.on_auth_accepted, priority=1)
+        self.events[HON_GSC_SERVER_STATE].connect(self.on_server_state, priority=1)
         
     @property
     def is_authenticated(self):
@@ -902,8 +903,8 @@ class GameSocket:
             print 'KEY ERROR ON PARSE PACKET'
             pass
         
-        # Trim the length and packet id from the packet
-        packet = packet[4:]
+        # Trim the packet id from the packet
+        packet = packet[3:]
         try:
             packet_data = self.packet_parser.parse_data(packet_id, packet)
         except HoNCoreError, e:
@@ -920,6 +921,39 @@ class GameSocket:
     def on_auth_accepted(self, *p):
         """ Set the authenticated state to True"""
         self.authenticated = True
+        
+    def on_server_state(self, packet_body):
+        """ Send the server_state response to the game server
+            packetHeader[headerIndex][0], 
+            packetHeader[headerIndex][1], 
+            0x05, 
+            packet[3], 
+            packet[4], 
+            packet[5], 
+            packet[6]
+        """
+        
+        print 'PACKET BODY : %s'%packet_body
+        print type(packet_body)
+        
+        c = Struct("server_state_response",
+                ULInt16("hon_connection_id"), 
+                Byte('server_state_response_byte'), 
+                ULInt32("packet_body")
+        )
+        
+        packet = c.build(Container(
+                                    hon_connection_id=HON_CONNECTION_ID, 
+                                    server_state_response_byte = 5, 
+                                    packet_body=packet_body))
+                                    
+        print('packet : %s'%len(packet))
+                                    
+        try:
+            self.send(packet)
+        except socket.error, e:
+            if e.errno == 32:
+                raise GameServerError(206)
 
     def send_pong(self):
         print 'GAME PONG'
@@ -995,8 +1029,7 @@ class GameSocket:
                    
         packet = c.build(Container(id=HON_CGS_AUTH_MAGIC_PACKET))
         self.send(packet)
-                   
-    
+        
     def send_game_message(self, message):
         """ Sends the message to the game lobby
             Takes 1 parameter.
@@ -1020,6 +1053,7 @@ class GamePacketParser:
         self.__add_parser(HON_GSC_PING, self.parse_ping)
         self.__add_parser(HON_GSC_CHANNEL_MSG, self.parse_game_message)
         self.__add_parser(HON_GSC_TIMEOUT, self.parse_timeout)
+        self.__add_parser(HON_GSC_SERVER_STATE, self.parse_server_state)
     
     def __add_parser(self, packet_id, function):
         """ Registers a parser function for the specified packet. 
@@ -1031,10 +1065,10 @@ class GamePacketParser:
 
     def parse_id(self, packet):
         """ Returns the packet's ID.
-            The ID is an unsigned short, or a 2 byte integer, which is located at bytes 3 and 4 
+            The ID is a 1 byte, which is located at bytes 3 
             within the packet.
         """
-        return struct.unpack('I', packet[0:4])[0]
+        return struct.unpack('B', packet[2])[0]
 
     def parse_data(self, packet_id, packet):
         """ Pushes the packet through to a matching registered packet parser, which extracts any useful data 
@@ -1059,9 +1093,26 @@ class GamePacketParser:
         
     def parse_timeout(self, packet):
         """ Game server timeout. When received, disconnect client from game server 
-            Packet ID: 0x51010000
+            Packet ID: 0x5101
         """
         return {}
+        
+    def parse_server_state(self, packet):
+        """ Game server timeout. When received, disconnect client from game server 
+            Packet ID: 0x03
+        """
+        
+        c = Struct('game_server_state',
+                    ULInt16('null_int'), 
+                    Byte('byte_id'), 
+                    ULInt32('packet_body'), 
+                    CString('message')
+                  )
+        r = c.parse(packet)
+        
+        return {
+            'packet_body' : r.packet_body
+        }
 
     def parse_game_message(self, packet):
         """ Triggered when a message is sent to the game lobby.

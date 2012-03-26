@@ -59,6 +59,7 @@ class HoNClient(object):
         self.__game_events[HON_GSC_PING] = Event("Game Ping", HON_GSC_PING)
         self.__game_events[HON_GSC_PACKET_RECV] = Event("Game Packet Received", HON_GSC_PACKET_RECV)
         self.__game_events[HON_GSC_TIMEOUT] = Event("Game Server Timeout", HON_GSC_TIMEOUT)
+        self.__game_events[HON_GSC_SERVER_STATE] = Event("Game Server State", HON_GSC_SERVER_STATE)
 
     def __setup_events(self):
         """ Transparent handling of some data is needed so that the client
@@ -70,6 +71,7 @@ class HoNClient(object):
         
         # Game events
         self.connect_event(HON_GSC_TIMEOUT, self.__on_game_timeout, priority=1)
+        self.connect_event(HON_GSC_SERVER_STATE, self.__on_game_server_state, priority=1)
 
     def __on_initial_statuses(self, users):
         """ Sets the status and flags for each user. """
@@ -108,6 +110,12 @@ class HoNClient(object):
         self.account.acc_key_hash = None
         
         self._game_disconnect()
+        
+    def __on_game_server_state(self, packet_body):
+        """ Handle the game server state packet, and tell the server we received it. We send back the packet body, composed of received_packet[3-7] 
+        """
+        
+        
 
     def _configure(self, *args, **kwargs):
         """ Set up some configuration for the client and the requester. 

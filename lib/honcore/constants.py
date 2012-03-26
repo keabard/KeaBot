@@ -66,7 +66,8 @@ HON_GSC_PACKET_RECV             = "HON_GSC_PACKET_RECV"
 HON_GSC_PING                    = 0x4c
 HON_GSC_AUTH_ACCEPTED           = 0x5c
 HON_GSC_CHANNEL_MSG             = 0x6c
-HON_GSC_TIMEOUT                 = 0x51010000
+HON_GSC_TIMEOUT                 = 0x5101
+HON_GSC_SERVER_STATE      = 0x03
 
 """ Client -> Server """
 HON_CS_PONG                     = 0x2A01
@@ -139,7 +140,7 @@ HON_MODE_INVISIBLE      = 0x03
 GAME_SERVER_TYPE        = 90
 MAXIMUM_SERVER_PING     = 90
 
-HON_SERVER_VERSION  = "2.5.15.0"
+HON_SERVER_VERSION  = "2.5.16.1"
 
 HON_HOST_ID                 = 1542367444
 HON_CONNECTION_ID     = 52175
