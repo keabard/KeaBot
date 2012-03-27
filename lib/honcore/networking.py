@@ -874,6 +874,7 @@ class GameSocket:
         #print "Sending on socket %s from thread %s" % (self.socket, threading.currentThread().getName())
         try:
             self.socket.send(data)
+            print ">>GAME %s"%len(data)
         except socket.error, e:
             #print "Socket error %s while sending." % e
             raise
@@ -933,9 +934,6 @@ class GameSocket:
             packet[6]
         """
         
-        print 'PACKET BODY : %s'%packet_body
-        print type(packet_body)
-        
         c = Struct("server_state_response",
                 ULInt16("hon_connection_id"), 
                 Byte('server_state_response_byte'), 
@@ -946,9 +944,7 @@ class GameSocket:
                                     hon_connection_id=HON_CONNECTION_ID, 
                                     server_state_response_byte = 5, 
                                     packet_body=packet_body))
-                                    
-        print('packet : %s'%len(packet))
-                                    
+    
         try:
             self.send(packet)
         except socket.error, e:
@@ -1018,6 +1014,20 @@ class GameSocket:
         except socket.error, e:
             if e.errno == 32:
                 raise GameServerError(206)
+                
+                
+        # Send the 4 first magic packets
+        
+        magic_c = Struct("magic_packet",
+                ULInt16("hon_connection_id"), 
+                ULInt16("id"),
+                String("hon_name", len("Heroes of Newerth")+1, encoding="utf8", padchar = "\x00"),
+                String("server_version", len(HON_SERVER_VERSION)+1, encoding="utf8", padchar = "\x00"),
+                ULInt32("host_id"), 
+                ULInt16("connection_id"), 
+                Byte("break_byte"))
+        
+        magic_packet = c.build(Container())
                 
     def send_magic_packet(self):
         """ Sends the post-authentication magic packet to the game server
@@ -1098,7 +1108,7 @@ class GamePacketParser:
         return {}
         
     def parse_server_state(self, packet):
-        """ Game server timeout. When received, disconnect client from game server 
+        """ Game server state. When received, tell the server that there is no need to send it again 
             Packet ID: 0x03
         """
         

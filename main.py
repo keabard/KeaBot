@@ -30,7 +30,7 @@ class BasicHoNClient(HoNClient):
         f.close()
         
     def __on_game_packet(self, packet_id, packet):
-        print "<<GAME 0x%x | %i bytes | %s" % (packet_id, len(packet), packet)
+        print "<<GAME 0x%x | %i bytes" % (packet_id, len(packet))
         """ Pipe the raw packet to a file for debugging. """
         if len(packet) > 2:
             f = open("raw-packets/game-0x%x" % packet_id, "a+")
@@ -127,10 +127,10 @@ class BasicHoNClient(HoNClient):
         return True
     
     def logout(self):
-        print "Disconnecting...."
         
         if self.is_connected_to_game:
             try:
+                print "Disconnecting from game..."
                 self._game_disconnect()
             except GameServerError, e:
                 print e
@@ -139,6 +139,7 @@ class BasicHoNClient(HoNClient):
             self.logged_in = False
             return
         try:
+            print "Disconnecting from chat server..."
             self._chat_disconnect()
         except ChatServerError, e:
             print e
