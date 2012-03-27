@@ -1020,14 +1020,18 @@ class GameSocket:
         
         magic_c = Struct("magic_packet",
                 ULInt16("hon_connection_id"), 
-                ULInt16("id"),
-                String("hon_name", len("Heroes of Newerth")+1, encoding="utf8", padchar = "\x00"),
-                String("server_version", len(HON_SERVER_VERSION)+1, encoding="utf8", padchar = "\x00"),
-                ULInt32("host_id"), 
-                ULInt16("connection_id"), 
-                Byte("break_byte"))
+                ULInt16("magic_int"))
         
-        magic_packet = c.build(Container())
+        magic_packet = magic_c.build(Container(
+                                         hon_connection_id = HON_CONNECTION_ID, 
+                                         magic_int = 0xc901
+                                         ))
+                                         
+        try:
+            for i in range(4):
+                self.send(magic_packet)
+        except socket.error, e:
+            raise GameServerError()
                 
     def send_magic_packet(self):
         """ Sends the post-authentication magic packet to the game server
@@ -1111,6 +1115,8 @@ class GamePacketParser:
         """ Game server state. When received, tell the server that there is no need to send it again 
             Packet ID: 0x03
         """
+        
+        print 'PACKET : %s'%len(packet)
         
         c = Struct('game_server_state',
                     ULInt16('null_int'), 
