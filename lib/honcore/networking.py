@@ -942,7 +942,7 @@ class GameSocket:
         
         packet = c.build(Container(
                                     hon_connection_id=HON_CONNECTION_ID, 
-                                    server_state_response_byte = 5, 
+                                    server_state_response_byte = 2, 
                                     packet_body=packet_body))
     
         try:
@@ -1016,22 +1016,38 @@ class GameSocket:
                 raise GameServerError(206)
                 
                 
-        # Send the 4 first magic packets
-        
-        magic_c = Struct("magic_packet",
-                ULInt16("hon_connection_id"), 
-                ULInt16("magic_int"))
-        
-        magic_packet = magic_c.build(Container(
-                                         hon_connection_id = HON_CONNECTION_ID, 
-                                         magic_int = 0xc901
-                                         ))
-                                         
-        try:
-            for i in range(4):
-                self.send(magic_packet)
-        except socket.error, e:
-            raise GameServerError()
+#        # Send the 4 first magic packets
+#        
+#        magic_c = Struct("magic_packet",
+#                ULInt16("hon_connection_id"), 
+#                ULInt16("magic_int"))
+#        
+#        magic_packet = magic_c.build(Container(
+#                                         hon_connection_id = 0, 
+#                                         magic_int = 0xc901
+#                                         ))
+#                                         
+#        try:
+#            for i in range(13):
+#                self.send(magic_packet)
+#        except socket.error, e:
+#            raise GameServerError()
+#            
+#        # Send another magic packet
+#        magic_c2 = Struct("magic_packet2", 
+#                          ULInt16("hon_connection_id"), 
+#                          Byte("magic_byte"), 
+#                          ULInt32('magic_int'), 
+#                          ULInt16('loading_state'))
+#                          
+#        magic_packet2 = magic_c2.build(Container(
+#                                            hon_connection_id = HON_CONNECTION_ID, 
+#                                            magic_byte = 3, 
+#                                            magic_int = 1, 
+#                                            loading_state = 50370
+#                                            ))
+#                                            
+#        self.send(magic_packet2)
                 
     def send_magic_packet(self):
         """ Sends the post-authentication magic packet to the game server
