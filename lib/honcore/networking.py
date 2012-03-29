@@ -1016,22 +1016,22 @@ class GameSocket:
                 raise GameServerError(206)
                 
                 
-#        # Send the 4 first magic packets
-#        
-#        magic_c = Struct("magic_packet",
-#                ULInt16("hon_connection_id"), 
-#                ULInt16("magic_int"))
-#        
-#        magic_packet = magic_c.build(Container(
-#                                         hon_connection_id = 0, 
-#                                         magic_int = 0xc901
-#                                         ))
-#                                         
-#        try:
-#            for i in range(13):
-#                self.send(magic_packet)
-#        except socket.error, e:
-#            raise GameServerError()
+        # Send the 5 first magic packets
+        
+        magic_c = Struct("magic_packet",
+                ULInt16("hon_connection_id"), 
+                ULInt16("magic_int"))
+        
+        magic_packet = magic_c.build(Container(
+                                         hon_connection_id = 0, 
+                                         magic_int = 0xc901
+                                         ))
+                                         
+        try:
+            for i in range(5):
+                self.send(magic_packet)
+        except socket.error, e:
+            raise GameServerError()
 #            
 #        # Send another magic packet
 #        magic_c2 = Struct("magic_packet2", 

@@ -30,7 +30,7 @@ class BasicHoNClient(HoNClient):
         f.close()
         
     def __on_game_packet(self, packet_id, packet):
-        print "<<GAME 0x%x | %i bytes" % (packet_id, len(packet))
+        print "<<GAME 0x%x | %i bytes | %s" % (packet_id, len(packet), packet)
         """ Pipe the raw packet to a file for debugging. """
         if len(packet) > 2:
             f = open("raw-packets/game-0x%x" % packet_id, "a+")
