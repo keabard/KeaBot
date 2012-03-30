@@ -923,7 +923,7 @@ class GameSocket:
         """ Set the authenticated state to True"""
         self.authenticated = True
         
-    def on_server_state(self, packet_body):
+    def on_server_state(self, packet_body, packet_second_id):
         """ Send the server_state response to the game server
             packetHeader[headerIndex][0], 
             packetHeader[headerIndex][1], 
@@ -935,14 +935,21 @@ class GameSocket:
         """
         
         c = Struct("server_state_response",
-                ULInt16("hon_connection_id"), 
+                ULInt16("packet_header"), 
                 Byte('server_state_response_byte'), 
                 ULInt32("packet_body")
         )
         
+        print 'PACKET SECOND ID : %s'%packet_second_id
+        
+        if packet_second_id == 0x01:
+            packet_header = 0
+        else:
+            packet_header = HON_CONNECTION_ID
+        
         packet = c.build(Container(
-                                    hon_connection_id=HON_CONNECTION_ID, 
-                                    server_state_response_byte = 2, 
+                                    packet_header=packet_header, 
+                                    server_state_response_byte = 5, 
                                     packet_body=packet_body))
     
         try:
@@ -1016,7 +1023,7 @@ class GameSocket:
                 raise GameServerError(206)
                 
                 
-        # Send the 5 first magic packets
+        # Send the 12 first magic packets
         
         magic_c = Struct("magic_packet",
                 ULInt16("hon_connection_id"), 
@@ -1028,7 +1035,7 @@ class GameSocket:
                                          ))
                                          
         try:
-            for i in range(5):
+            for i in range(12):
                 self.send(magic_packet)
         except socket.error, e:
             raise GameServerError()
@@ -1132,18 +1139,15 @@ class GamePacketParser:
             Packet ID: 0x03
         """
         
-        print 'PACKET : %s'%len(packet)
-        
         c = Struct('game_server_state',
-                    ULInt16('null_int'), 
-                    Byte('byte_id'), 
                     ULInt32('packet_body'), 
                     CString('message')
                   )
         r = c.parse(packet)
         
         return {
-            'packet_body' : r.packet_body
+            'packet_body' : r.packet_body, 
+            'packet_second_id' : struct.unpack('B', packet[0])[0]
         }
 
     def parse_game_message(self, packet):

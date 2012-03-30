@@ -35,7 +35,7 @@ class BasicHoNClient(HoNClient):
         if len(packet) > 2:
             f = open("raw-packets/game-0x%x" % packet_id, "a+")
             #print "%s (%s)"%(struct.unpack('<H%ss'%(len(packet[2:])-2), packet[2:]), struct.unpack('>H', packet[:2]))
-            print >>f, "%s (%s)"%(struct.unpack('<H%ss'%(len(packet[2:])-2), packet[2:]), struct.unpack('>H', packet[:2]))
+            print >>f, "(%s) %s"%( len(packet), struct.unpack('<%ss'%len(packet), packet))
             #f.flush()
             f.close()
 
