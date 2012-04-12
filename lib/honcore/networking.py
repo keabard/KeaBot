@@ -41,6 +41,35 @@ class SocketListener(threading.Thread):
             except socket.error, e:
                 #print "Socket.error: %s" % e
                 break
+                
+class SocketSender(threading.Thread):
+    """ A threaded sender class. Enables the sending
+        of packets to be done in the background, periodically.
+    """
+    def __init__(self, address, port, period, packet):
+        threading.Thread.__init__(self, name='SocketSender')
+        self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.socket.connect((address, port))
+        self.period = period
+        self.packet = packet
+        self.stopped = False
+        
+
+    def __repr__(self):
+        return "<SocketSender on socket %s>" % self.socket
+
+    def run(self):
+        while not self.stopped:
+            try:
+                self.socket.send(self.packet)
+                time.sleep(self.period)
+                print "Packet %s sent on socket %s" % (self.packet, self.socket)
+            except socket.timeout, e:
+                #print "Socket.timeout: %s" % e
+                continue
+            except socket.error, e:
+                #print "Socket.error: %s" % e
+                break
 
 class ChatSocket:
     """ Represents the socket connected to the chat server.
@@ -792,6 +821,7 @@ class GameSocket:
         self.listener = None
         self.packet_parser = GamePacketParser()
         self.events = game_events
+        self.senders = {}
 
         # Transparently connect the ping event to the pong sender.
         self.events[HON_GSC_PING].connect(self.send_pong, priority=1)
@@ -826,6 +856,10 @@ class GameSocket:
     def connect(self, address, port):
         """ Creates a connection to the game server and starts listening for packets.
         """
+        
+        self.address = address
+        self.port = port
+        
         try:
             self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             #self.socket.bind(("", 0))
@@ -865,6 +899,12 @@ class GameSocket:
         self.listener.stopped = True
         self.listener.join()
         self.listener = None
+        
+        for sender_packet, sender in self.senders.items():
+            sender.stopped = True
+            sender.join()
+        
+        self.senders = None
     
     def send(self, data):
         """ Wrapper send method. 
@@ -918,6 +958,12 @@ class GameSocket:
         if packet_id in self.events:
             event = self.events[packet_id]
             event.trigger(**packet_data)
+            
+    def add_sender(self, period, packet):
+        """ Add a new SocketSender to our GameSocket """
+        sender = SocketSender(self.address, self.port, period, packet)
+        self.senders.update({packet : sender})
+        self.senders[packet].start()
 
     def on_auth_accepted(self, *p):
         """ Set the authenticated state to True"""
@@ -1039,8 +1085,23 @@ class GameSocket:
                 self.send(magic_packet)
         except socket.error, e:
             raise GameServerError()
-#            
-#        # Send another magic packet
+            
+        # Setup a SocketSender for packet [HON_CONNECTION_ID]01c9
+        
+        periodic_c = Struct("periodic_packet", 
+                          ULInt16("hon_connection_id"), 
+                          Byte("magic_byte"), 
+                          Byte("magic_byte2"))
+                          
+        periodic_packet = periodic_c.build(Container(
+                                            hon_connection_id = HON_CONNECTION_ID, 
+                                            magic_byte = 3, 
+                                            magic_byte2 = 201, 
+                                            ))
+                                            
+        self.add_sender(period = 0.3, packet = periodic_packet)
+
+
 #        magic_c2 = Struct("magic_packet2", 
 #                          ULInt16("hon_connection_id"), 
 #                          Byte("magic_byte"), 

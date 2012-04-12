@@ -249,12 +249,7 @@ class HoNClient(object):
     def _chat_disconnect(self):
         """ Disconnect gracefully from the chat server and close & remove the socket."""
         if self.__chat_socket is not None:
-            self.__chat_socket.connected = False # Safer to stop the thread with this first.
-            try:
-                self.__chat_socket.socket.shutdown(socket.SHUT_RDWR)
-                self.__chat_socket.socket.close()
-            except socket.error:
-                raise ChatServerError(209)
+            self.__chat_socket.disconnect()
                 
     """ Gameserver related functions"""
     def _game_connect(self):
@@ -310,12 +305,7 @@ class HoNClient(object):
     def _game_disconnect(self):
         """ Disconnect gracefully from the game server and close & remove the socket."""
         if self.__game_socket is not None:
-            self.__game_socket.connected = False # Safer to stop the thread with this first.
-            try:
-                self.__game_socket.socket.shutdown(socket.SHUT_RDWR)
-                self.__game_socket.socket.close()
-            except socket.error:
-                raise GameServerError(209)
+            self.__game_socket.disconnect()
 
     @property
     def is_logged_in(self):
