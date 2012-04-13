@@ -46,10 +46,9 @@ class SocketSender(threading.Thread):
     """ A threaded sender class. Enables the sending
         of packets to be done in the background, periodically.
     """
-    def __init__(self, address, port, period, packet):
+    def __init__(self, socket, period, packet):
         threading.Thread.__init__(self, name='SocketSender')
-        self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.socket.connect((address, port))
+        self.socket = socket
         self.period = period
         self.packet = packet
         self.stopped = False
@@ -914,7 +913,7 @@ class GameSocket:
         #print "Sending on socket %s from thread %s" % (self.socket, threading.currentThread().getName())
         try:
             self.socket.send(data)
-            print ">>GAME %s"%len(data)
+            print ">>GAME %s | %s"%(len(data), struct.unpack('%ss'%len(data), data))
         except socket.error, e:
             #print "Socket error %s while sending." % e
             raise
@@ -944,8 +943,9 @@ class GameSocket:
             print 'KEY ERROR ON PARSE PACKET'
             pass
         
-        # Trim the packet id from the packet
+        # Trim the packet id from the packet 0000030300000067 -> 0300000067
         packet = packet[3:]
+        
         try:
             packet_data = self.packet_parser.parse_data(packet_id, packet)
         except HoNCoreError, e:
@@ -961,7 +961,7 @@ class GameSocket:
             
     def add_sender(self, period, packet):
         """ Add a new SocketSender to our GameSocket """
-        sender = SocketSender(self.address, self.port, period, packet)
+        sender = SocketSender(self.socket, period, packet)
         self.senders.update({packet : sender})
         self.senders[packet].start()
 
@@ -986,13 +986,14 @@ class GameSocket:
                 ULInt32("packet_body")
         )
         
-        print 'PACKET SECOND ID : %s'%packet_second_id
-        
         if packet_second_id == 0x01:
             packet_header = 0
+            loading_state = 194
         else:
             packet_header = HON_CONNECTION_ID
+            loading_state = 196
         
+        # Send the "i got it!" packet
         packet = c.build(Container(
                                     packet_header=packet_header, 
                                     server_state_response_byte = 5, 
@@ -1003,6 +1004,23 @@ class GameSocket:
         except socket.error, e:
             if e.errno == 32:
                 raise GameServerError(206)
+                
+        # Send the corresponding loading_state packet
+        
+        loading_state_struct = Struct("loading_state_c2", 
+                          ULInt16("hon_connection_id"), 
+                          Byte("magic_byte"), 
+                          ULInt32("packet_body"), 
+                          Byte('loading_state'))
+                          
+        loading_state_packet = loading_state_struct.build(Container(
+                                            hon_connection_id = HON_CONNECTION_ID, 
+                                            magic_byte = 3,
+                                            packet_body = packet_body,
+                                            loading_state = loading_state
+                                            ))
+                                            
+        self.send(loading_state_packet)
 
     def send_pong(self):
         print 'GAME PONG'
@@ -1085,7 +1103,10 @@ class GameSocket:
                 self.send(magic_packet)
         except socket.error, e:
             raise GameServerError()
-            
+        
+        
+        time.sleep(1)
+        
         # Setup a SocketSender for packet [HON_CONNECTION_ID]01c9
         
         periodic_c = Struct("periodic_packet", 
@@ -1095,27 +1116,12 @@ class GameSocket:
                           
         periodic_packet = periodic_c.build(Container(
                                             hon_connection_id = HON_CONNECTION_ID, 
-                                            magic_byte = 3, 
+                                            magic_byte = 1, 
                                             magic_byte2 = 201, 
                                             ))
                                             
         self.add_sender(period = 0.3, packet = periodic_packet)
-
-
-#        magic_c2 = Struct("magic_packet2", 
-#                          ULInt16("hon_connection_id"), 
-#                          Byte("magic_byte"), 
-#                          ULInt32('magic_int'), 
-#                          ULInt16('loading_state'))
-#                          
-#        magic_packet2 = magic_c2.build(Container(
-#                                            hon_connection_id = HON_CONNECTION_ID, 
-#                                            magic_byte = 3, 
-#                                            magic_int = 1, 
-#                                            loading_state = 50370
-#                                            ))
-#                                            
-#        self.send(magic_packet2)
+        
                 
     def send_magic_packet(self):
         """ Sends the post-authentication magic packet to the game server
@@ -1202,7 +1208,7 @@ class GamePacketParser:
         
         c = Struct('game_server_state',
                     ULInt32('packet_body'), 
-                    CString('message')
+                    String('message', len(packet)-4)
                   )
         r = c.parse(packet)
         
