@@ -969,7 +969,7 @@ class GameSocket:
         """ Set the authenticated state to True"""
         self.authenticated = True
         
-    def on_server_state(self, packet_body, packet_second_id):
+    def on_server_state(self, packet_body, packet_second_id, packet_third_id):
         """ Send the server_state response to the game server
             packetHeader[headerIndex][0], 
             packetHeader[headerIndex][1], 
@@ -986,7 +986,7 @@ class GameSocket:
                 ULInt32("packet_body")
         )
         
-        if packet_second_id == 0x01:
+        if packet_second_id == 0x01 and packet_third_id == 0x00:
             packet_header = 0
             loading_state = 194
         else:
@@ -1109,18 +1109,18 @@ class GameSocket:
         
         # Setup a SocketSender for packet [HON_CONNECTION_ID]01c9
         
-        periodic_c = Struct("periodic_packet", 
-                          ULInt16("hon_connection_id"), 
-                          Byte("magic_byte"), 
-                          Byte("magic_byte2"))
-                          
-        periodic_packet = periodic_c.build(Container(
-                                            hon_connection_id = HON_CONNECTION_ID, 
-                                            magic_byte = 1, 
-                                            magic_byte2 = 201, 
-                                            ))
-                                            
-        self.add_sender(period = 0.3, packet = periodic_packet)
+#        periodic_c = Struct("periodic_packet", 
+#                          ULInt16("hon_connection_id"), 
+#                          Byte("magic_byte"), 
+#                          Byte("magic_byte2"))
+#                          
+#        periodic_packet = periodic_c.build(Container(
+#                                            hon_connection_id = HON_CONNECTION_ID, 
+#                                            magic_byte = 1, 
+#                                            magic_byte2 = 201, 
+#                                            ))
+#                                            
+#        self.add_sender(period = 0.3, packet = periodic_packet)
         
                 
     def send_magic_packet(self):
@@ -1214,7 +1214,8 @@ class GamePacketParser:
         
         return {
             'packet_body' : r.packet_body, 
-            'packet_second_id' : struct.unpack('B', packet[0])[0]
+            'packet_second_id' : struct.unpack('B', packet[0])[0], 
+            'packet_third_id' : struct.unpack('B', packet[1])[0]
         }
 
     def parse_game_message(self, packet):

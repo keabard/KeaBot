@@ -45,9 +45,9 @@ class BasicHoNClient(HoNClient):
         for buddy in self.get_buddies():
             if buddy.status != HON_STATUS_OFFLINE:
                 print "%s is online" % buddy
-        time.sleep(2)
-        self.create_game("Test")
-        time.sleep(1)
+#        time.sleep(2)
+#        self.create_game("Test")
+#        time.sleep(1)
 
     def on_whisper(self, player, message):
         print "Whisper from %s : %s"%(player, message)
@@ -90,6 +90,9 @@ class BasicHoNClient(HoNClient):
     def on_game_invite(self, player, server_ip):
         print "Game invite from %s : %s"%(player, server_ip)
         self.send_whisper(player, "Merci pour l'invite connard")
+        self.account.game_ip = server_ip.split(':')[0]
+        self.account.game_port = int(server_ip.split(':')[1])
+        self._game_connect()
         
     def on_buddy_invite(self, player, pass_int):
         print 'BUDDY INVITE RECEIVED : %s %s'%(player, pass_int)

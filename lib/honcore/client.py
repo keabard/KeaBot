@@ -263,7 +263,7 @@ class HoNClient(object):
             Finally sends a valid authentication packet. Any exceptions are raised to the top method.
         """
 
-        if self.account == None or self.account.cookie == None or self.account.game_session_key == None or self.account.auth_hash == None:
+        if self.account == None or self.account.cookie == None:
             raise GameServerError(205)
        
         if self.__game_socket is None:
