@@ -45,8 +45,10 @@ class BasicHoNClient(HoNClient):
         for buddy in self.get_buddies():
             if buddy.status != HON_STATUS_OFFLINE:
                 print "%s is online" % buddy
+        time.sleep(2)
+#        self.join_channel("HoN France")
 #        time.sleep(2)
-#        self.create_game("Test")
+        self.create_game("Test")
 #        time.sleep(1)
 
     def on_whisper(self, player, message):

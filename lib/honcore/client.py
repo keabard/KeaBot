@@ -252,18 +252,17 @@ class HoNClient(object):
             self.__chat_socket.disconnect()
                 
     """ Gameserver related functions"""
-    def _game_connect(self):
-        """ Sends the initial authentication request to a gameserver via the game socket object.
+    def _game_create(self, game_name):
+        """ Sends the create game request to a gameserver via the game socket object.
 
-            Ensures the user information required for authentication is available, otherwise raises
+            Ensures the user information required is available, otherwise raises
             a GameServerError #205 (No session key/auth hash provided)
 
             If for some reason a GameSocket does not exist then one is created.
             Connects that game socket to the correct address and port. Any exceptions are raised to the top method.
-            Finally sends a valid authentication packet. Any exceptions are raised to the top method.
         """
-
-        if self.account == None or self.account.cookie == None:
+        
+        if not all([self.account, self.account.cookie, self.account.auth_hash, self.account.game_ip, self.account.game_port, self.account.acc_key, self.account.acc_key_hash]):
             raise GameServerError(205)
        
         if self.__game_socket is None:
@@ -278,14 +277,60 @@ class HoNClient(object):
         
         # Send initial authentication request to the game server.
         try:
-            self.__game_socket.send_auth_info(
-                                              player_name = self.account.nickname, 
-                                              cookie = self.account.cookie,  
-                                              ip = self.account.ip, 
-                                              acc_key = self.account.acc_key, 
-                                              account_id = self.account.account_id, 
-                                              acc_key_hash = self.account.acc_key_hash, 
-                                              auth_hash = self.account.auth_hash)
+            self.__game_socket.create_game(game_name = game_name, 
+                                           player_name = self.account.nickname, 
+                                          cookie = self.account.cookie,  
+                                          ip = self.account.ip, 
+                                          acc_key = self.account.acc_key, 
+                                          account_id = self.account.account_id, 
+                                          acc_key_hash = self.account.acc_key_hash, 
+                                          auth_hash = self.account.auth_hash)
+            #self.__game_socket.send_magic_packet()
+        except GameServerError:
+            raise # Re-raise the exception.
+        
+        # The idea is to give 10 seconds for the chat server to respond to the authentication request.
+        # If it is accepted, then the `is_authenticated` flag will be set to true.
+        # NOTE: Lag will make this sort of iffy....
+        attempts = 1
+        while attempts is not 10:
+            if self.__game_socket.is_authenticated:
+                return True
+            else:
+                time.sleep(1)
+                attempts += 1
+        raise GameServerError(200) # Server did not respond to the authentication request 
+        
+    def _game_connect(self):
+        """ Sends the join game request to a gameserver via the game socket object.
+
+            Ensures the user information required is available, otherwise raises
+            a GameServerError #205 (No session key/auth hash provided)
+
+            If for some reason a GameSocket does not exist then one is created.
+            Connects that game socket to the correct address and port. Any exceptions are raised to the top method.
+        """
+        
+        if not all([self.account, self.account.cookie, self.account.auth_hash, self.account.game_ip, self.account.game_port]):
+            raise GameServerError(205)
+       
+        if self.__game_socket is None:
+            self.__game_socket = GameSocket()
+        try:
+            self.__game_socket.connect(self.account.game_ip, self.account.game_port) # Basic connection to the socket
+        except HoNCoreError as e:
+            if e.code == 10: # Socket error.
+                raise GameServerError(208) # Could not connect to the game server.
+            elif e.code == 11: # Socket timed out.
+                raise GameServerError(201)
+        
+        # Send initial authentication request to the game server.
+        try:
+            self.__game_socket.join_game(player_name = self.account.nickname, 
+                                          cookie = self.account.cookie,  
+                                          ip = self.account.ip, 
+                                          account_id = self.account.account_id, 
+                                          auth_hash = self.account.auth_hash)
             #self.__game_socket.send_magic_packet()
         except GameServerError:
             raise # Re-raise the exception.
@@ -530,7 +575,7 @@ class HoNClient(object):
         self.account.game_host_id = server_infos['server_info']['server_id']
         self.account.acc_key = server_infos['acc_key']
         self.account.acc_key_hash = server_infos['acc_key_hash']
-        self._game_connect()
+        self._game_create(game_name)
         
     def pick_game_server(self, maximum_ping=150):
         """ Request masterserver for server list, and return the first game server infos with a ping under

@@ -1026,7 +1026,7 @@ class GameSocket:
         print 'GAME PONG'
         self.send(struct.pack('H', HON_CS_PONG))
 
-    def send_auth_info(self, player_name, cookie, ip, acc_key, account_id, acc_key_hash, auth_hash):
+    def create_game(self, game_name, player_name, cookie, ip, acc_key, account_id, acc_key_hash, auth_hash):
         """ Sends the chat server authentication request.
             Takes 7 parameters.
                 `player_name`   A string containing the player name 
@@ -1037,7 +1037,7 @@ class GameSocket:
                 `acc_key_hash`  A 40 character string containing a hash of the acc_key, provided by masterserver
                 `auth_hash`     A 40 character string containing an authentication hash.
         """
-        c = Struct("login",
+        c = Struct("game_server_auth",
                 ULInt16("header_int"), 
                 ULInt16("id"),
                 String("hon_name", len("Heroes of Newerth")+1, encoding="utf8", padchar = "\x00"),
@@ -1086,26 +1086,57 @@ class GameSocket:
             if e.errno == 32:
                 raise GameServerError(206)
                 
-                
-        # Send the 12 first magic packets
+        time.sleep(5)
+    
+        # Send game options
         
-        magic_c = Struct("magic_packet",
-                ULInt16("hon_connection_id"), 
-                ULInt16("magic_int"))
+        #-- Totally magic header :
         
-        magic_packet = magic_c.build(Container(
-                                         hon_connection_id = 0, 
-                                         magic_int = 0xc901
-                                         ))
-                                         
+        game_options = "map:caldavar mode:normal region: teamsize:5 spectators:0 referees:0 minpsr:0 maxpsr:0 private:false noleaver:false nostats:false alternatepicks:false norepick:false noswap:false noagility:false nointelligence:false nostrength:false norespawntimer:false dropitems:false nopowerups:false casual:false allowduplicate:false shuffleteams:false tournamentrules:false hardcore:false devheroes:false autobalance:false verifiedonly:false "
+        
+        c = Struct("send_game_options",
+                ULInt16("connection_id"), 
+                ULInt16("magic_int"), 
+                Byte("magic_byte"), 
+                ULInt32("magic_int2"), 
+                String("game_name", len(game_name)+1, encoding="utf8", padchar = "\x00"),
+                String("game_options", len(game_options)+1, encoding="utf8", padchar = "\x00"),
+        )
+
+        packet = c.build(Container(connection_id = HON_CONNECTION_ID, 
+                                   magic_int=7171, 
+                                   magic_byte=0, 
+                                   magic_int2=449314816, 
+                                   game_name = game_name, 
+                                   game_options = game_options))
+                                   
         try:
-            for i in range(12):
-                self.send(magic_packet)
+            self.send(packet)
+            self.authenticated = True
         except socket.error, e:
-            raise GameServerError()
-        
-        
-        time.sleep(1)
+            if e.errno == 32:
+                raise GameServerError(206)
+                
+                
+#        # Send the 12 first magic packets
+#        
+#        magic_c = Struct("magic_packet",
+#                ULInt16("hon_connection_id"), 
+#                ULInt16("magic_int"))
+#        
+#        magic_packet = magic_c.build(Container(
+#                                         hon_connection_id = 0, 
+#                                         magic_int = 0xc901
+#                                         ))
+#                                         
+#        try:
+#            for i in range(12):
+#                self.send(magic_packet)
+#        except socket.error, e:
+#            raise GameServerError()
+#        
+#        
+#        time.sleep(1)
         
         # Setup a SocketSender for packet [HON_CONNECTION_ID]01c9
         
@@ -1123,16 +1154,67 @@ class GameSocket:
 #        self.add_sender(period = 0.3, packet = periodic_packet)
         
                 
-    def send_magic_packet(self):
-        """ Sends the post-authentication magic packet to the game server
-            Packet ID : 0xc9010000
+    def join_game(self, player_name, cookie, ip, account_id, auth_hash):
+        """ Join a game already created
+            Takes 7 parameters.
+                `player_name`   A string containing the player name 
+                `cookie`        A 32 character string containing a cookie.
+                `ip`            A string containing the player's IP address.
+                `acc_key`       A 32 character string containing the acc_key, provided by masterserver
+                `account_id`    An integer containing the player's account ID.
+                `acc_key_hash`  A 40 character string containing a hash of the acc_key, provided by masterserver
+                `auth_hash`     A 40 character string containing an authentication hash.
         """
+        '\x00\x00\x01\xc0Heroes of Newerth\x002.5.19.0\x00\xc3i\x9c\xb8ja\x00[orKs]Keabard\x007aeb27eeaa1085f213f67477028c7091\x0082.230.197.220\x00\x00\x00\x00\xdfG\x04\x0062effedddc8bd0b7ffcfec040971abefdca2f961\x00\x00\x00\x00\x14\x05\x00\x00 N\x00\x00\x14\x00\x00\x00'
+
+        c = Struct("join_game",
+                ULInt16("header_int"), 
+                ULInt16("id"),
+                String("hon_name", len("Heroes of Newerth")+1, encoding="utf8", padchar = "\x00"),
+                String("server_version", len(HON_SERVER_VERSION)+1, encoding="utf8", padchar = "\x00"),
+                ULInt32("host_id"), 
+                ULInt16("connection_id"), 
+                Byte("break_byte"), 
+                String("player_name", len(player_name)+1, encoding="utf8", padchar = "\x00"),
+                String("cookie", len(cookie)+1, encoding="utf8", padchar = "\x00"),
+                String("ip", len(ip)+1, encoding="utf8", padchar = "\x00"),
+                ULInt16("magic_int"), 
+                Byte("break_byte2"), 
+                ULInt32("account_id"), 
+                String("auth_hash", len(auth_hash)+1, encoding="utf8", padchar="\x00"), 
+                Byte("break_byte3"), 
+                ULInt32("magic_int2"), 
+                ULInt32("magic_int3"), 
+                ULInt32("magic_int4"), 
+                ULInt16("magic_int5")
+        )
+
+        packet = c.build(Container(header_int=0, 
+                                   id=HON_CGS_AUTH_INFO, 
+                                    hon_name=unicode("Heroes of Newerth"), 
+                                    server_version=unicode(HON_SERVER_VERSION), 
+                                    host_id=HON_HOST_ID, 
+                                    connection_id=HON_CONNECTION_ID,
+                                    break_byte = 0, 
+                                    player_name=unicode(player_name),
+                                    cookie=unicode(cookie), 
+                                    ip=unicode(ip), 
+                                    magic_int=0, 
+                                    break_byte2=0, 
+                                    account_id=account_id, 
+                                    auth_hash=unicode(auth_hash), 
+                                    break_byte3=0, 
+                                    magic_int2=0x5140000, 
+                                    magic_int3=0x4e200000, 
+                                    magic_int4=0x140000, 
+                                    magic_int5=0x0))
         
-        c = Struct("magic_packet",
-                   ULInt32("id"))
-                   
-        packet = c.build(Container(id=HON_CGS_AUTH_MAGIC_PACKET))
-        self.send(packet)
+        try:
+            self.send(packet)
+            self.authenticated = True
+        except socket.error, e:
+            if e.errno == 32:
+                raise GameServerError(206)
         
     def send_game_message(self, message):
         """ Sends the message to the game lobby
