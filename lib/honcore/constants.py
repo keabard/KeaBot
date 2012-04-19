@@ -67,7 +67,8 @@ HON_GSC_PING                    = 0x4c
 HON_GSC_AUTH_ACCEPTED           = 0x5c
 HON_GSC_CHANNEL_MSG             = 0x6c
 HON_GSC_TIMEOUT                 = 0x5101
-HON_GSC_SERVER_STATE      = 0x03
+HON_GSC_SERVER_STATE            = 0x03
+HON_GSC_SERVER_INFO             = 0x01
 
 """ Client -> Server """
 HON_CS_PONG                     = 0x2A01

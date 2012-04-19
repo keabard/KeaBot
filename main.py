@@ -48,7 +48,7 @@ class BasicHoNClient(HoNClient):
         time.sleep(2)
 #        self.join_channel("HoN France")
 #        time.sleep(2)
-        self.create_game("Test")
+#        self.create_game("Test")
 #        time.sleep(1)
 
     def on_whisper(self, player, message):

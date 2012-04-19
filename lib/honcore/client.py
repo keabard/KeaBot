@@ -60,6 +60,7 @@ class HoNClient(object):
         self.__game_events[HON_GSC_PACKET_RECV] = Event("Game Packet Received", HON_GSC_PACKET_RECV)
         self.__game_events[HON_GSC_TIMEOUT] = Event("Game Server Timeout", HON_GSC_TIMEOUT)
         self.__game_events[HON_GSC_SERVER_STATE] = Event("Game Server State", HON_GSC_SERVER_STATE)
+        self.__game_events[HON_GSC_SERVER_INFO] = Event("Game Server INFO", HON_GSC_SERVER_INFO)
 
     def __setup_events(self):
         """ Transparent handling of some data is needed so that the client
