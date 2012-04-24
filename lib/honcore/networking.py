@@ -970,33 +970,30 @@ class GameSocket:
         """ Set the authenticated state to True"""
         self.authenticated = True
         
-    def on_server_info(self, info_id, packet_body):
+    def on_server_info(self, packet_body):
         """ React to the game server info
         """
         
-        if info_id == 8391:        
-            # Send the heartbeat response packet
+        # Send the heartbeat response packet
+        
+        heartbeat_struct = Struct("server_heartbeat",
+                ULInt16("hon_connection_id"), 
+                Byte('heartbeat_byte'), 
+                ULInt16("heartbeat_int"),
+                ULInt32("packet_body"), 
+                Byte("end_byte")
+        )
+        
+        heartbeat_packet = heartbeat_struct.build(Container(
+                                            hon_connection_id = HON_CONNECTION_ID, 
+                                            heartbeat_byte = 1,
+                                            heartbeat_int = 8391, 
+                                            packet_body = packet_body,
+                                            end_byte = 0,
+                                            ))
+                                            
+        self.send(heartbeat_packet)
             
-            heartbeat_struct = Struct("server_heartbeat",
-                    ULInt16("hon_connection_id"), 
-                    Byte('heartbeat_byte'), 
-                    ULInt16("hearbeat_int"),
-                    ULInt32("packet_body"), 
-                    Byte("end_byte")
-            )
-            
-            heartbeat_packet = heartbeat_struct.build(Container(
-                                                hon_connection_id = HON_CONNECTION_ID, 
-                                                heartbeat_byte = 1,
-                                                heartbeat_int = 8391, 
-                                                packet_body = packet_body,
-                                                end_byte = 0,
-                                                ))
-                                                
-            self.send(heartbeat_packet)
-            
-        else:
-            return
         
     def on_server_state(self, packet_body, packet_second_id, packet_third_id):
         """ Send the server_state response to the game server
@@ -1389,7 +1386,12 @@ class GameSocket:
         except socket.error, e:
             if e.errno == 32:
                 raise GameServerError(206)
-        
+    
+    def join_team(self, team_slot):
+        #6a61035b000000c8010200000000000000 PINK
+        #send(new int[]{packetHeader[headerIndex][0], packetHeader[headerIndex][1], 0x03, count[0], count[1], count[2], count[3], 0xc8, 0x01, team, 0x00, 0x00, 0x00, slot, 0x00, 0x00, 0x00});
+        pass
+
         
     def send_game_message(self, message):
         """ Sends the message to the game lobby
@@ -1482,25 +1484,21 @@ class GamePacketParser:
         """
         
         # Game server HeartBeat case
-        if struct.unpack('H', packet[0:2])[0] == 8391:
+        print 'HEARTBEAT RECEIVED, INFO ID : %s'%struct.unpack('H', packet[0:2])[0]
             
-            info_id = 8391
-            
-            c = Struct('game_server_heartbeat',
-                        ULInt32('trash_int'), 
-                        ULInt32('trash_int2'), 
-                        ULInt32('packet_body'), 
-                        String('trash', len(packet)-12)
-                      )
-            r = c.parse(packet)
-            
-            return {
-                'packet_body' : r.packet_body, 
-                'info_id' : info_id
-            }
-            
-        else:
-            return
+        c = Struct('game_server_heartbeat',
+                    ULInt32('trash_int'), 
+                    ULInt32('trash_int2'), 
+                    ULInt32('packet_body'), 
+                    String('trash', len(packet)-12)
+                  )
+        r = c.parse(packet)
+        
+        print 'PACKET BODY : %s'%r.packet_body
+        
+        return {
+            'packet_body' : r.packet_body, 
+        }
 
     def parse_game_message(self, packet):
         """ Triggered when a message is sent to the game lobby.
