@@ -71,8 +71,8 @@ class HoNClient(object):
         self.connect_event(HON_SC_ENTERED_CHANNEL, self.__on_entered_channel, priority=1)
         
         # Game events
-        self.connect_event(HON_GSC_TIMEOUT, self.__on_game_timeout, priority=1)
-        self.connect_event(HON_GSC_SERVER_STATE, self.__on_game_server_state, priority=1)
+        self.connect_game_event(HON_GSC_TIMEOUT, self.__on_game_timeout, priority=1)
+        self.connect_game_event(HON_GSC_SERVER_STATE, self.__on_game_server_state, priority=1)
 
     def __on_initial_statuses(self, users):
         """ Sets the status and flags for each user. """
@@ -622,6 +622,23 @@ class HoNClient(object):
                 self.__game_events[event_id].disconnect(method)
             except:
                 raise HoNCoreError(13) # Unknown event ID
+                
+    def connect_game_event(self, event_id, method, priority=5):
+        """ Wrapper method for connecting events. """
+        try:
+            self.__game_events[event_id].connect(method, priority)
+        except :
+            raise HoNCoreError(13) # Unknown event ID 
+                
+    def disconnect_game_event(self, event_id, method):
+        """ Wrapper method for disconnecting events. """
+        try:
+            self.__game_events[event_id].disconnect(method)
+        except HoNCoreError, e:
+            if e.id == 14: # Method is not connected to this event.
+                raise
+        except:
+            raise HoNCoreError(13) # Unknown event ID
 
     def id_to_channel(self, channel_id):
         """ Wrapper function to return the channel name for the given ID.

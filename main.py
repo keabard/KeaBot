@@ -13,7 +13,7 @@ class BasicHoNClient(HoNClient):
 
     def setup_events(self):
         self.connect_event(HON_SC_PACKET_RECV, self.__on_packet)
-        self.connect_event(HON_GSC_PACKET_RECV, self.__on_game_packet)
+        self.connect_game_event(HON_GSC_PACKET_RECV, self.__on_game_packet)
         self.connect_event(HON_SC_AUTH_ACCEPTED, self.on_authenticated)
         self.connect_event(HON_SC_WHISPER, self.on_whisper)
         self.connect_event(HON_SC_JOINED_CHANNEL, self.on_joined_channel)
@@ -46,7 +46,7 @@ class BasicHoNClient(HoNClient):
             if buddy.status != HON_STATUS_OFFLINE:
                 print "%s is online" % buddy
         time.sleep(2)
-#        self.join_channel("HoN France")
+        self.join_channel("HoN France")
 #        time.sleep(2)
 #        self.create_game("Test")
 #        time.sleep(1)

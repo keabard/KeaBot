@@ -1386,11 +1386,51 @@ class GameSocket:
         except socket.error, e:
             if e.errno == 32:
                 raise GameServerError(206)
+                
+        time.sleep(2)
+        
+        self.join_team('BLUE')
     
     def join_team(self, team_slot):
         #6a61035b000000c8010200000000000000 PINK
         #send(new int[]{packetHeader[headerIndex][0], packetHeader[headerIndex][1], 0x03, count[0], count[1], count[2], count[3], 0xc8, 0x01, team, 0x00, 0x00, 0x00, slot, 0x00, 0x00, 0x00});
-        pass
+        """ Join a team in the game
+            Takes 1 parameter.
+                `team_slot`       A string corresponding to a team slot.
+        """
+        
+        print 'JOINING SLOT : %s'%team_slot
+        
+        c = Struct("join_team",
+                ULInt16("connection_id"), 
+                Byte("id_byte"), 
+                ULInt32("magic_int"), 
+                ULInt16("join_team_int"), 
+                Byte('team_byte'), 
+                Byte('null_byte'), 
+                Byte('null_byte2'), 
+                Byte('null_byte3'),
+                Byte('slot_byte'), 
+                Byte('null_byte4'),
+                Byte('null_byte5'),
+                Byte('null_byte6')
+        )
+
+        packet = c.build(Container(connection_id=HON_CONNECTION_ID,
+                                    id_byte = 3, 
+                                    magic_int = 91, 
+                                    join_team_int = 456, 
+                                    team_byte = TEAM_SLOTS[team_slot][0], 
+                                    null_byte = 0, 
+                                    null_byte2 = 0, 
+                                    null_byte3 = 0, 
+                                    slot_byte = TEAM_SLOTS[team_slot][1], 
+                                    null_byte4 = 0, 
+                                    null_byte5 = 0, 
+                                    null_byte6 = 0
+                                   ))
+        
+        self.send(packet)
 
         
     def send_game_message(self, message):

@@ -141,6 +141,22 @@ HON_MODE_INVISIBLE      = 0x03
 GAME_SERVER_TYPE        = 90
 MAXIMUM_SERVER_PING     = 90
 
+""" Team Slots"""
+TEAM_SLOTS = {
+                        'BLUE' : (1, 0),
+                        'TEAL' : (1, 1), 
+                        'PURPLE' : (1, 2), 
+                        'YELLOW' : (1, 3), 
+                        'ORANGE' : (1, 4), 
+                        'PINK' : (2, 0), 
+                        'GREY' : (2, 1), 
+                        'LIGHTBLUE' : (2, 2), 
+                        'GREEN' : (2, 3), 
+                        'BROWN' : (2, 4), 
+                        'SPECTATOR' : (3, 0), 
+                        'REFEREE' : (4, 0)
+}
+
 HON_SERVER_VERSION  = "2.5.20.0"
 
 #HON_HOST_ID                 = 1542367444 
