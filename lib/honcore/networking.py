@@ -311,8 +311,15 @@ class ChatSocket:
         print 'Sending buddy add notify to player : %s'%player
         self.send(packet)
 
-    def send_join_game(self):
-        pass
+    def send_join_game(self, game_name):
+        """ Send a 'join game' notification to the server 
+            Packet ID : 0x10
+        """
+        c = Struct("join_game", 
+                   ULInt16("id"), 
+                   String("game_name",  len(game_name)+1, encoding="utf8", padchar="\x00"))
+        packet = c.build(Container(id=HON_CS_JOIN_GAME, game_name=unicode(game_name)))
+        self.send(packet)
     
     def send_clan_message(self):
         pass
@@ -821,6 +828,9 @@ class GameSocket:
         self.packet_parser = GamePacketParser()
         self.events = game_events
         self.senders = {}
+        
+        # We have to count the number of 0x03 packets we send
+        self.zero_x_zero_three_count = 0x00
 
         # Transparently connect the ping event to the pong sender.
         self.events[HON_GSC_PING].connect(self.send_pong, priority=1)
@@ -829,6 +839,11 @@ class GameSocket:
         self.events[HON_GSC_AUTH_ACCEPTED].connect(self.on_auth_accepted, priority=1)
         self.events[HON_GSC_SERVER_STATE].connect(self.on_server_state, priority=1)
         self.events[HON_GSC_SERVER_INFO].connect(self.on_server_info, priority=1)
+        
+        
+    def get_0x03_count(self):
+        self.zero_x_zero_three_count += 1
+        return self.zero_x_zero_three_count
         
     @property
     def is_authenticated(self):
@@ -1117,43 +1132,43 @@ class GameSocket:
             if e.errno == 32:
                 raise GameServerError(206)
                 
-        # Send the 12 first magic packets
-        
-        magic_c = Struct("magic_packet",
-                ULInt16("hon_connection_id"), 
-                ULInt16("magic_int"))
-        
-        magic_packet = magic_c.build(Container(
-                                         hon_connection_id = 0, 
-                                         magic_int = 0xc901
-                                         ))
-                                         
-        try:
-            for i in range(12):
-                self.send(magic_packet)
-        except socket.error, e:
-            raise GameServerError()
-        
-        
-        time.sleep(1)
-        
-       # Setup a SocketSender for packet [HON_CONNECTION_ID]01c9
-        
-        periodic_c = Struct("periodic_packet", 
-                          ULInt16("hon_connection_id"), 
-                          Byte("magic_byte"), 
-                          Byte("magic_byte2"))
-                          
-        periodic_packet = periodic_c.build(Container(
-                                            hon_connection_id = HON_CONNECTION_ID, 
-                                            magic_byte = 1, 
-                                            magic_byte2 = 201, 
-                                            ))
-                                            
-        self.add_sender(period = 0.3, packet = periodic_packet)
-        
-        
-        time.sleep(5)
+#        # Send the 12 first magic packets
+#        
+#        magic_c = Struct("magic_packet",
+#                ULInt16("hon_connection_id"), 
+#                ULInt16("magic_int"))
+#        
+#        magic_packet = magic_c.build(Container(
+#                                         hon_connection_id = 0, 
+#                                         magic_int = 0xc901
+#                                         ))
+#                                         
+#        try:
+#            for i in range(12):
+#                self.send(magic_packet)
+#        except socket.error, e:
+#            raise GameServerError()
+#        
+#        
+#        time.sleep(1)
+#        
+#       # Setup a SocketSender for packet [HON_CONNECTION_ID]01c9
+#        
+#        periodic_c = Struct("periodic_packet", 
+#                          ULInt16("hon_connection_id"), 
+#                          Byte("magic_byte"), 
+#                          Byte("magic_byte2"))
+#                          
+#        periodic_packet = periodic_c.build(Container(
+#                                            hon_connection_id = HON_CONNECTION_ID, 
+#                                            magic_byte = 1, 
+#                                            magic_byte2 = 201, 
+#                                            ))
+#                                            
+#        self.add_sender(period = 0.3, packet = periodic_packet)
+#        
+#        
+#        time.sleep(5)
     
         # Send game options
         
@@ -1292,17 +1307,17 @@ class GameSocket:
         c = Struct("load_auth",
                 ULInt16("connection_id"), 
                 Byte("id_byte"), 
-                Byte("second_id_byte"), 
-                ULInt32("magic_int"), 
-                ULInt16("magic_int2"), 
+                ULInt32("zeroxzerothree_count"), 
+                ULInt16("magic_int"), 
+                Byte("magic_byte"), 
                 String("cookie", len(cookie)+1, encoding="utf8", padchar = "\x00"),
         )
 
         packet = c.build(Container(connection_id=HON_CONNECTION_ID,
                                    id_byte = 3, 
-                                   second_id_byte = 1, 
-                                   magic_int = 3254779904, 
-                                   magic_int2 = 53444,
+                                   zeroxzerothree_count = self.get_0x03_count(), 
+                                   magic_int = 50370, 
+                                   magic_byte = 208,
                                    cookie=unicode(cookie), 
                                    ))
         
@@ -1313,26 +1328,26 @@ class GameSocket:
             if e.errno == 32:
                 raise GameServerError(206)
     
-        # Send "i loaded 100% packet"
-        
-        c = Struct("loaded_100",
-                ULInt16("connection_id"), 
-                Byte("id_byte"), 
-                Byte("second_id_byte"), 
-                ULInt32("progression_percent")
-        )
-
-        packet = c.build(Container(connection_id=HON_CONNECTION_ID,
-                                   id_byte = 1, 
-                                   second_id_byte = 206, 
-                                   progression_percent = 1065353216))
-        
-        try:
-            self.send(packet)
-            self.authenticated = True
-        except socket.error, e:
-            if e.errno == 32:
-                raise GameServerError(206)
+#        # Send "i loaded 100% packet"
+#        
+#        c = Struct("loaded_100",
+#                ULInt16("connection_id"), 
+#                Byte("id_byte"), 
+#                Byte("second_id_byte"), 
+#                ULInt32("progression_percent")
+#        )
+#
+#        packet = c.build(Container(connection_id=HON_CONNECTION_ID,
+#                                   id_byte = 1, 
+#                                   second_id_byte = 206, 
+#                                   progression_percent = 1065353216))
+#        
+#        try:
+#            self.send(packet)
+#            self.authenticated = True
+#        except socket.error, e:
+#            if e.errno == 32:
+#                raise GameServerError(206)
         
         
         # Send "i'm finished loading" packet
@@ -1340,17 +1355,13 @@ class GameSocket:
         c = Struct("join_game",
                 ULInt16("connection_id"), 
                 Byte("id_byte"), 
-                Byte("second_id_byte"), 
-                ULInt16("null_int"), 
-                Byte('null_byte'), 
+                ULInt32("zeroxzerothree_count"), 
                 Byte('finished_loading_byte')
         )
 
         packet = c.build(Container(connection_id=HON_CONNECTION_ID,
                                    id_byte = 3, 
-                                   second_id_byte = 2, 
-                                   null_int = 0, 
-                                   null_byte = 0, 
+                                   zeroxzerothree_count = self.get_0x03_count(), 
                                    finished_loading_byte = 203))
         
         try:
@@ -1365,20 +1376,20 @@ class GameSocket:
         c = Struct("magic_ending",
                 ULInt16("connection_id"), 
                 Byte("id_byte"), 
-                Byte("second_id_byte"), 
+                ULInt32("zeroxzerothree_count"), 
                 ULInt32("magic_int"), 
                 ULInt32("magic_int2"), 
                 ULInt32("magic_int3"), 
-                ULInt32("magic_int4"), 
+                Byte("magic_byte"), 
         )
 
         packet = c.build(Container(connection_id=HON_CONNECTION_ID,
                                    id_byte = 3, 
-                                   second_id_byte = 3, 
-                                   magic_int = 3305111552,
-                                   magic_int2 = 114632,
-                                   magic_int3 = 16842752,
-                                   magic_int4 = 0))
+                                   zeroxzerothree_count = self.get_0x03_count(), 
+                                   magic_int = 29345989,
+                                   magic_int2 = 16777216,
+                                   magic_int3 = 1, 
+                                   magic_byte = 0))
         
         try:
             self.send(packet)
@@ -1386,12 +1397,90 @@ class GameSocket:
         except socket.error, e:
             if e.errno == 32:
                 raise GameServerError(206)
-                
-        time.sleep(2)
         
-        self.join_team('BLUE')
+        self.join_spec()
+        
+    def swap_players(self, first_slot, second_slot):
+        """ Swap 2 player slots
+            Takes 2 parameters.
+                `first_slot`       A string corresponding to the first slot color.
+                `second_slot`      A string corresponding to the second slot color.
+        """
+        
+        c = Struct("swap_players",
+                ULInt16("connection_id"), 
+                Byte("id_byte"), 
+                ULInt32("zeroxzerothree_count"), 
+                ULInt16("swap_slot_int"), 
+                Byte('team1_byte'), 
+                Byte('null_byte'), 
+                Byte('null_byte2'), 
+                Byte('null_byte3'),
+                Byte('slot1_byte'), 
+                Byte('null_byte4'),
+                Byte('null_byte5'),
+                Byte('null_byte6'), 
+                Byte('team2_byte'), 
+                Byte('null_byte7'), 
+                Byte('null_byte8'), 
+                Byte('null_byte9'),
+                Byte('slot2_byte'), 
+                Byte('null_byte10'),
+                Byte('null_byte11'),
+                Byte('null_byte12')
+        )
+
+        packet = c.build(Container(connection_id=HON_CONNECTION_ID,
+                                    id_byte = 3, 
+                                    zeroxzerothree_count = self.get_0x03_count(), 
+                                    swap_slot_int = 20424, 
+                                    team1_byte = TEAM_SLOTS[first_slot][0], 
+                                    null_byte = 0, 
+                                    null_byte2 = 0, 
+                                    null_byte3 = 0, 
+                                    slot1_byte = TEAM_SLOTS[first_slot][1], 
+                                    null_byte4 = 0, 
+                                    null_byte5 = 0, 
+                                    null_byte6 = 0, 
+                                    team2_byte = TEAM_SLOTS[second_slot][0], 
+                                    null_byte7 = 0, 
+                                    null_byte8 = 0, 
+                                    null_byte9 = 0, 
+                                    slot2_byte = TEAM_SLOTS[second_slot][1], 
+                                    null_byte10 = 0, 
+                                    null_byte11 = 0, 
+                                    null_byte12 = 0
+                                   ))
+        
+        self.send(packet)
+        
+    def join_spec(self):
+        #6a61034f000000c80100000000ffffffff SPEC
+        """ Join a spectator slot
+        """
+        
+        c = Struct("join_spec",
+                ULInt16("connection_id"), 
+                Byte("id_byte"), 
+                ULInt32("zeroxzerothree_count"), 
+                ULInt16("join_team_int"), 
+                ULInt32("null_int"), 
+                ULInt32("spec_tail")
+        )
+
+        packet = c.build(Container(connection_id=HON_CONNECTION_ID,
+                                    id_byte = 3, 
+                                    zeroxzerothree_count = self.get_0x03_count(), 
+                                    join_team_int = 456, 
+                                    null_int = 0, 
+                                    spec_tail = 4294967295
+                                   ))
+        
+        self.send(packet)
+        
     
     def join_team(self, team_slot):
+        #0019
         #6a61035b000000c8010200000000000000 PINK
         #send(new int[]{packetHeader[headerIndex][0], packetHeader[headerIndex][1], 0x03, count[0], count[1], count[2], count[3], 0xc8, 0x01, team, 0x00, 0x00, 0x00, slot, 0x00, 0x00, 0x00});
         """ Join a team in the game
@@ -1399,12 +1488,10 @@ class GameSocket:
                 `team_slot`       A string corresponding to a team slot.
         """
         
-        print 'JOINING SLOT : %s'%team_slot
-        
         c = Struct("join_team",
                 ULInt16("connection_id"), 
                 Byte("id_byte"), 
-                ULInt32("magic_int"), 
+                ULInt32("zeroxzerothree_count"), 
                 ULInt16("join_team_int"), 
                 Byte('team_byte'), 
                 Byte('null_byte'), 
@@ -1418,7 +1505,7 @@ class GameSocket:
 
         packet = c.build(Container(connection_id=HON_CONNECTION_ID,
                                     id_byte = 3, 
-                                    magic_int = 91, 
+                                    zeroxzerothree_count = self.get_0x03_count(), 
                                     join_team_int = 456, 
                                     team_byte = TEAM_SLOTS[team_slot][0], 
                                     null_byte = 0, 
@@ -1524,17 +1611,18 @@ class GamePacketParser:
         """
         
         # Game server HeartBeat case
-        print 'HEARTBEAT RECEIVED, INFO ID : %s'%struct.unpack('H', packet[0:2])[0]
+#        print 'HEARTBEAT RECEIVED, INFO ID : %s'%struct.unpack('H', packet[0:2])[0]
+        #0000015a0e000000c765650096504305400280506e00
             
         c = Struct('game_server_heartbeat',
                     ULInt32('trash_int'), 
-                    ULInt32('trash_int2'), 
+                    Byte('trash_byte'), 
                     ULInt32('packet_body'), 
-                    String('trash', len(packet)-12)
+                    String('trash', len(packet)-9)
                   )
         r = c.parse(packet)
         
-        print 'PACKET BODY : %s'%r.packet_body
+#        print 'PACKET BODY : %s'%r.packet_body
         
         return {
             'packet_body' : r.packet_body, 

@@ -112,10 +112,10 @@ class HoNClient(object):
         
         self._game_disconnect()
         
-    def __on_game_server_state(self, packet_body):
+    def __on_game_server_state(self, packet_body, packet_second_id, packet_third_id):
         """ Handle the game server state packet, and tell the server we received it. We send back the packet body, composed of received_packet[3-7] 
         """
-        
+        pass
         
 
     def _configure(self, *args, **kwargs):
