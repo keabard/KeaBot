@@ -93,7 +93,7 @@ class Account:
         * Users     A lift of users in the channel.
 """
 class Channel:
-    def __init__(self, channel_id, channe_name, topic='', operators=[], users=[]):
+    def __init__(self, channel_id, channel_name, topic='', operators=[], users=[]):
         self.id = channel_id
         self.name = channel_name
         self.topic = topic

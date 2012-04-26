@@ -5,6 +5,7 @@ with HoN's chat server.
 
 import sys, struct, socket, time
 import deserialise, common
+from common import Channel
 from requester import Requester
 from networking import ChatSocket, GameSocket
 from utils import ping_server
@@ -69,10 +70,10 @@ class HoNClient(object):
         # Chat events
         self.connect_event(HON_SC_JOINED_CHANNEL, self.__on_joined_channel, priority=1)
         self.connect_event(HON_SC_ENTERED_CHANNEL, self.__on_entered_channel, priority=1)
+        self.connect_event(HON_SC_LEFT_CHANNEL, self.__on_left_channel, priority=1)
         
         # Game events
         self.connect_game_event(HON_GSC_TIMEOUT, self.__on_game_timeout, priority=1)
-        self.connect_game_event(HON_GSC_SERVER_STATE, self.__on_game_server_state, priority=1)
 
     def __on_initial_statuses(self, users):
         """ Sets the status and flags for each user. """
@@ -82,10 +83,11 @@ class HoNClient(object):
                 user.status = users[account_id]['status']
                 user.flags = users[account_id]['flags']
     
-    def __on_joined_channel(self, channel, channel_id, topic, operators, users):
+    def __on_joined_channel(self, channel_name, channel_id, topic, operators, users):
         """ Channel names, channel ids, user nicks and user account ids need to be
             contained in a hash table/dict so they can be looked up later when needed.
         """
+        channel = Channel(channel_id, channel_name, topic, operators, users)
         self.__channels[channel_id] = channel
         for user in users:
             if user.account_id not in self.__users:
@@ -97,7 +99,25 @@ class HoNClient(object):
         """
         if user.account_id not in self.__users:
             self.__users[user.account_id] = user
+        channel = self.__channels[channel_id]
+        if user not in channel.users:
+            channel.users.append(user)
             
+    def __on_left_channel(self, channel_id, user_id):
+        """ Transparently remove the id and nick of the user who left the channel to
+            the users dictionary.
+        """
+        channel = self.__channels[channel_id]
+        for user in channel.users:
+            if user.account_id == user_id:
+                channel.users.remove(user)
+                break
+                
+        if user.account_id in self.__users:
+            self.__users.pop(user.account_id)
+        
+        print 'User %s left channel %s'%(user.nickname, channel.name)
+        
     def __on_game_timeout(self):
         """ Handle the game server timeout gently.
         """
@@ -112,12 +132,6 @@ class HoNClient(object):
         
         self._game_disconnect()
         
-    def __on_game_server_state(self, packet_body, packet_second_id, packet_third_id):
-        """ Handle the game server state packet, and tell the server we received it. We send back the packet body, composed of received_packet[3-7] 
-        """
-        pass
-        
-
     def _configure(self, *args, **kwargs):
         """ Set up some configuration for the client and the requester. 
             The requester configuration is not really needed, but just incase
@@ -560,7 +574,19 @@ class HoNClient(object):
             Takes 1 parameter.
                 `player`    A string containing the player's name.
         """
+        self.__game_socket.send_game_invite(player)
         self.__chat_socket.send_game_invite(player)
+        
+    def send_mass_invite(self, channel_name):
+        """ Sends a game invite to all the players of a channel.
+            Takes 1 parameter.
+                `channel_name`    A string containing the channel name.
+        """
+        channel = self.name_to_channel(channel_name)
+        for player in channel.users:
+            print 'Sending invite to player : %s'%player
+            self.__game_socket.send_game_invite(player.nickname)
+            self.__chat_socket.send_game_invite(player.nickname)
 
     def send_game_server_ip(self, server_ip):
         """ Sends a chosen game server ip to the chat server.
@@ -582,6 +608,7 @@ class HoNClient(object):
         self.account.game_host_id = server_infos['server_info']['server_id']
         self.account.acc_key = server_infos['acc_key']
         self.account.acc_key_hash = server_infos['acc_key_hash']
+        self.send_join_game(self.account.game_ip)
         self._game_create(game_name)
         
     def pick_game_server(self, maximum_ping=150):
@@ -672,6 +699,16 @@ class HoNClient(object):
             return self.__users[account_id]
         except KeyError:
             return None
+
+    def name_to_channel(self, channel_name):
+        """ Wrapper function to return the channel object for the channel associated with that channel_name.
+            If no channel was found then return None
+        """
+        for channel_id, channel in self.__channels.items():
+            if channel.name == channel_name:
+                return channel
+        
+        return None
 
     def get_buddies(self):
         buddies = []

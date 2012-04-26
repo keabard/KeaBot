@@ -108,6 +108,7 @@ class Requester:
         pass
 
     def stats_request(self, aid):
+        #masterserver.hon.s2games.com/client_requester.php?f=get_match_stats&match_id[0]=87517209&cookie=blabla
         pass
 
     def stats_request_ranked(self, aid):

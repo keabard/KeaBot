@@ -53,15 +53,18 @@ class BasicHoNClient(HoNClient):
 
     def on_whisper(self, player, message):
         print "Whisper from %s : %s"%(player, message)
-        if 'create game ' in message:
-            self.create_game(message.split('create game ')[1])
+        if 'create_game ' in message:
+            self.create_game(message.split('create_game ')[1])
         elif 'buddy' in message:
             self.send_buddy_add_notify(player)
+        elif 'mass_invite' in message:
+            print 'Sending mass invite to channel : %s'%message.split('mass_invite ')[1]
+            self.send_mass_invite(message.split('mass_invite ')[1])
         elif 'invite' in message and 'keabard' in player.lower():
             self.send_game_invite(player)
         
-    def on_joined_channel(self, channel, channel_id, topic, operators, users):
-        print "Joined channel %s" % channel
+    def on_joined_channel(self, channel_name, channel_id, topic, operators, users):
+        print "Joined channel %s" % channel_name
         op_count = 0
         normal_count = 0
         nicknames = []

@@ -610,7 +610,7 @@ class PacketParser:
         r = c.parse(packet)
          
         return {
-            'channel': r.channel_name,
+            'channel_name': r.channel_name,
             'channel_id': r.channel_id,
             'topic': r.channel_topic,
             'operators': [op for op in r.op_users],
@@ -641,7 +641,18 @@ class PacketParser:
         return {'channel_id': r.channel_id, 'user': u}
 
     def parse_left_channel(self, packet):
-        pass
+        """ When another user leaves a channel.
+            Returns the following:
+                `channel_id`    The ID of the channel that the user left.
+                `user_id`          The user ID of the user that left.
+            Packet ID: 0x06
+        """
+        c = Struct('left_channel',
+                ULInt32('u_id'),
+                ULInt32('channel_id'),
+            )
+        r = c.parse(packet)
+        return {'channel_id': r.channel_id, 'user_id': r.u_id}
 
     def parse_whisper(self, packet):
         """ A normal whisper from anyone.
@@ -858,7 +869,7 @@ class GameSocket:
         # Transparently connect the ping event to the pong sender.
         self.events[HON_GSC_PING].connect(self.send_pong, priority=1)
 
-        # Some internal handling of the authentication process is also needed
+        # Some internal handling of the authentication process and hearbeat process is also needed
         self.events[HON_GSC_AUTH_ACCEPTED].connect(self.on_auth_accepted, priority=1)
         self.events[HON_GSC_SERVER_STATE].connect(self.on_server_state, priority=1)
         self.events[HON_GSC_SERVER_INFO].connect(self.on_server_info, priority=1)
@@ -1051,12 +1062,8 @@ class GameSocket:
                 ULInt32("packet_body")
         )
         
-        if packet_second_id == 0x01 and packet_third_id == 0x00:
-            packet_header = 0
-            loading_state = 194
-        else:
-            packet_header = HON_CONNECTION_ID
-            loading_state = 196
+        packet_header = HON_CONNECTION_ID
+        loading_state = 196
         
         # Send the "i got it!" packet
         packet = c.build(Container(
@@ -1072,17 +1079,17 @@ class GameSocket:
                 
         # If not joining a game, send the corresponding loading_state packet
         
-        if self.creating:
+        if self.creating and not (packet_second_id == 0x01 and packet_third_id == 0x00):
             loading_state_struct = Struct("loading_state_c2", 
                               ULInt16("hon_connection_id"), 
-                              Byte("magic_byte"), 
-                              ULInt32("packet_body"), 
+                              Byte("byte_id"), 
+                              ULInt32("zeroxzerothree_count"), 
                               Byte('loading_state'))
                               
             loading_state_packet = loading_state_struct.build(Container(
                                                 hon_connection_id = HON_CONNECTION_ID, 
-                                                magic_byte = 3,
-                                                packet_body = packet_body,
+                                                byte_id = 3,
+                                                zeroxzerothree_count = self.get_0x03_count(),
                                                 loading_state = loading_state
                                                 ))
                                                 
@@ -1192,7 +1199,7 @@ class GameSocket:
 #        self.add_sender(period = 0.3, packet = periodic_packet)
 #        
 #        
-#        time.sleep(5)
+        time.sleep(5)
     
         # Send game options
         
@@ -1200,17 +1207,17 @@ class GameSocket:
         
         c = Struct("send_game_options",
                 ULInt16("connection_id"), 
-                ULInt16("magic_int"), 
-                Byte("magic_byte"), 
-                ULInt32("magic_int2"), 
+                Byte("byte_id"), 
+                ULInt32("zeroxzerothree_count"), 
+                ULInt16("game_options_int"), 
                 String("game_name", len(game_name)+1, encoding="utf8", padchar = "\x00"),
                 String("game_options", len(game_options)+1, encoding="utf8", padchar = "\x00"),
         )
 
         packet = c.build(Container(connection_id = HON_CONNECTION_ID, 
-                                   magic_int=7171, 
-                                   magic_byte=0, 
-                                   magic_int2=449314816, 
+                                   byte_id = 3, 
+                                   zeroxzerothree_count = self.get_0x03_count(),
+                                   game_options_int = 6856, 
                                    game_name = game_name, 
                                    game_options = game_options))
                                    
@@ -1220,6 +1227,85 @@ class GameSocket:
         except socket.error, e:
             if e.errno == 32:
                 raise GameServerError(206)
+        
+        time.sleep(5)
+        self.creating = False
+        self.joining = True
+        
+        # Send "i begin loading" packet
+        
+        c = Struct("loaded_0",
+                ULInt16("connection_id"), 
+                Byte("id_byte"), 
+                Byte("second_id_byte"), 
+                ULInt32("progression_percent")
+        )
+
+        packet = c.build(Container(connection_id=HON_CONNECTION_ID,
+                                   id_byte = 1, 
+                                   second_id_byte = 206, 
+                                   progression_percent = 0))
+        
+        try:
+            self.send(packet)
+            self.authenticated = True
+        except socket.error, e:
+            if e.errno == 32:
+                raise GameServerError(206)
+                
+        time.sleep(5)
+                
+        # Send "i'm finished loading" packet
+                
+        c = Struct("join_game",
+                ULInt16("connection_id"), 
+                Byte("id_byte"), 
+                ULInt32("zeroxzerothree_count"), 
+                Byte('finished_loading_byte')
+        )
+
+        packet = c.build(Container(connection_id=HON_CONNECTION_ID,
+                                   id_byte = 3, 
+                                   zeroxzerothree_count = self.get_0x03_count(), 
+                                   finished_loading_byte = 203))
+        
+        try:
+            self.send(packet)
+            self.authenticated = True
+        except socket.error, e:
+            if e.errno == 32:
+                raise GameServerError(206)
+                
+        time.sleep(3)
+                
+        # Send the magic ending packet
+        
+        c = Struct("magic_ending",
+                ULInt16("connection_id"), 
+                Byte("id_byte"), 
+                ULInt32("zeroxzerothree_count"), 
+                ULInt32("magic_int"), 
+                ULInt32("magic_int2"), 
+                ULInt32("magic_int3"), 
+                Byte("magic_byte"), 
+        )
+
+        packet = c.build(Container(connection_id=HON_CONNECTION_ID,
+                                   id_byte = 3, 
+                                   zeroxzerothree_count = self.get_0x03_count(), 
+                                   magic_int = 29345989,
+                                   magic_int2 = 16777216,
+                                   magic_int3 = 1, 
+                                   magic_byte = 0))
+        
+        try:
+            self.send(packet)
+            self.authenticated = True
+        except socket.error, e:
+            if e.errno == 32:
+                raise GameServerError(206)
+        
+        self.join_spec()
         
                 
     def join_game(self, player_name, cookie, ip, account_id, auth_hash):
@@ -1554,6 +1640,27 @@ class GameSocket:
                 String("message", len(message)+1, encoding="utf8", padchar="\x00"),
         )
         packet = c.build(Container(id=HON_CS_CHANNEL_MSG, message=unicode(message)))
+        self.send(packet)
+        
+    def send_game_invite(self, player):
+        """ Sends a request to join the current game.
+            Takes 1 parameter.
+                `player`       A string containing the player name.
+        """
+        c = Struct("game_invite",
+                ULInt16("connection_id"), 
+                Byte("id_byte"), 
+                ULInt32("zeroxzerothree_count"), 
+                Byte("game_invite_byte"), 
+                String("player", len(player)+1, encoding="utf8", padchar="\x00")
+        )
+
+        packet = c.build(Container(connection_id=HON_CONNECTION_ID,
+                                    id_byte = 3, 
+                                    zeroxzerothree_count = self.get_0x03_count(), 
+                                    game_invite_byte = 207, 
+                                    player = unicode(player)))
+        
         self.send(packet)
 
 class GamePacketParser:
