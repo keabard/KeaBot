@@ -286,7 +286,6 @@ class HoNClient(object):
                                           account_id = self.account.account_id, 
                                           acc_key_hash = self.account.acc_key_hash, 
                                           auth_hash = self.account.auth_hash)
-            #self.__game_socket.send_magic_packet()
         except GameServerError:
             raise # Re-raise the exception.
         
@@ -548,6 +547,13 @@ class HoNClient(object):
                 `player`    A string containing the player's name.
         """
         self.__chat_socket.send_buddy_accept(player)
+    
+    def send_join_game(self, game_server_ip):
+        """ Sends a join game notification.
+            Takes 1 parameter.
+                `game_server_ip`  A string containing the game server IP.
+        """
+        self.__chat_socket.send_join_game(game_server_ip)
         
     def send_game_invite(self, player):
         """ Sends a game invite to the player.

@@ -76,7 +76,7 @@ HON_CS_CHANNEL_MSG              = 0x03
 HON_CS_WHISPER                  = 0x08
 HON_CS_AUTH_INFO                = 0x0C00
 HON_CS_BUDDY_ADD_NOTIFY         = 0x0D
-HON_CS_JOIN_GAME                = 0x10
+HON_CS_JOIN_GAME                = 0x10                     
 HON_CS_CLAN_MESSAGE             = 0x13
 HON_CS_PM                       = 0x1C
 HON_CS_JOIN_CHANNEL             = 0x1E
@@ -106,7 +106,7 @@ HON_CS_INVITE_TO_MM             = 0x0C0D
 "Reverse-engineered"
 
 HON_CS_GAME_INVITE              = 0x24
-HON_CS_GAME_SERVER_IP           = 0xf00
+HON_CS_GAME_SERVER_IP           = 0xf
 HON_CS_GAME_SERVER_INFO         = 0x1000
 
 """ Client -> GameServer """

@@ -53,12 +53,12 @@ class BasicHoNClient(HoNClient):
 
     def on_whisper(self, player, message):
         print "Whisper from %s : %s"%(player, message)
-        if 'invite' in message:
-            self.send_game_invite(player)
-        elif 'create game ' in message:
+        if 'create game ' in message:
             self.create_game(message.split('create game ')[1])
         elif 'buddy' in message:
             self.send_buddy_add_notify(player)
+        elif 'invite' in message and 'keabard' in player.lower():
+            self.send_game_invite(player)
         
     def on_joined_channel(self, channel, channel_id, topic, operators, users):
         print "Joined channel %s" % channel
@@ -91,9 +91,10 @@ class BasicHoNClient(HoNClient):
 
     def on_game_invite(self, player, server_ip):
         print "Game invite from %s : %s"%(player, server_ip)
-        self.send_whisper(player, "Merci pour l'invite connard")
+        #self.send_whisper(player, "Merci pour l'invite connard")
         self.account.game_ip = server_ip.split(':')[0]
         self.account.game_port = int(server_ip.split(':')[1])
+        self.send_join_game(server_ip)
         self._game_connect()
         
     def on_buddy_invite(self, player, pass_int):
