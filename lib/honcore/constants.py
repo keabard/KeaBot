@@ -157,7 +157,7 @@ TEAM_SLOTS = {
                         'REFEREE' : (4, 0)
 }
 
-HON_SERVER_VERSION  = "2.5.20.0"
+HON_SERVER_VERSION  = "2.5.22.0"
 
 #HON_HOST_ID                 = 1542367444 
 HON_CONNECTION_ID     = 52175

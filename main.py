@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import time, sys, getpass, signal, struct
 from lib.honcore.client import HoNClient
 from lib.honcore.exceptions import *
@@ -58,8 +59,10 @@ class BasicHoNClient(HoNClient):
         elif 'buddy' in message:
             self.send_buddy_add_notify(player)
         elif 'mass_invite' in message:
-            print 'Sending mass invite to channel : %s'%message.split('mass_invite ')[1]
-            self.send_mass_invite(message.split('mass_invite ')[1])
+            target_channel = message.split('mass_invite ')[1]
+            print 'Sending mass invite to channel : %s'%target_channel
+            self.send_mass_invite(target_channel)
+            #self.send_channel_message(u"[BOT] Invitation envoyée à tout le chan %s pour la game de %s"%(target_channel, player))
         elif 'invite' in message and 'keabard' in player.lower():
             self.send_game_invite(player)
         
