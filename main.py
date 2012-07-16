@@ -166,7 +166,7 @@ class BasicHoNClient(HoNClient):
 
 def main():
     client = BasicHoNClient()
-    client.configure(protocol=22, invis=False)
+    client.configure(protocol=26, invis=False)
 
     def sigint_handler(signal, frame):
         print "SIGINT, quitting..."
